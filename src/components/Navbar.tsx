@@ -51,14 +51,11 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* Navigation */}
+        {/* Navigation - Simplified */}
         <nav className="flex items-center gap-6 text-sm border-t border-border py-2">
-          <button className="hover:text-primary transition-colors">Modelos</button>
-          <button className="hover:text-primary transition-colors">Pipelines</button>
-          <button className="hover:text-primary transition-colors">Métricas</button>
-          <button className="hover:text-primary transition-colors">Datasets</button>
-          <button className="hover:text-primary transition-colors">Experimentos</button>
-          <button className="hover:text-primary transition-colors">Ayuda / PQR</button>
+          <button className="hover:text-primary transition-colors font-medium">
+            Dashboard
+          </button>
         </nav>
       </div>
     </header>

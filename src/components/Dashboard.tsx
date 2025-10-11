@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 
 const models = [
   {
+    id: "boston-housing",
     name: "Boston Housing Price Predictor",
     type: "Random Forest Regressor",
     accuracy: "94.7%",
@@ -12,9 +13,9 @@ const models = [
     rating: 4.8,
     reviews: 142,
     inferenceTime: "87ms",
-    discount: "65% OFF"
   },
   {
+    id: "credit-risk",
     name: "Credit Risk Assessment Model",
     type: "XGBoost Classifier",
     accuracy: "96.2%",
@@ -25,6 +26,7 @@ const models = [
     inferenceTime: "92ms",
   },
   {
+    id: "customer-churn",
     name: "Customer Churn Prediction",
     type: "Neural Network",
     accuracy: "89.3%",
@@ -33,9 +35,9 @@ const models = [
     rating: 4.5,
     reviews: 87,
     inferenceTime: "125ms",
-    discount: "50% OFF"
   },
   {
+    id: "product-recommendation",
     name: "Product Recommendation Engine",
     type: "Collaborative Filtering",
     accuracy: "91.8%",
@@ -46,6 +48,7 @@ const models = [
     inferenceTime: "65ms",
   },
   {
+    id: "fraud-detection",
     name: "Fraud Detection System",
     type: "Random Forest Classifier",
     accuracy: "97.5%",
@@ -54,9 +57,9 @@ const models = [
     rating: 4.9,
     reviews: 312,
     inferenceTime: "73ms",
-    discount: "40% OFF"
   },
   {
+    id: "demand-forecasting",
     name: "Demand Forecasting Model",
     type: "LSTM Network",
     accuracy: "88.6%",
@@ -67,6 +70,7 @@ const models = [
     inferenceTime: "156ms",
   },
   {
+    id: "sentiment-analysis",
     name: "Sentiment Analysis Classifier",
     type: "BERT Fine-tuned",
     accuracy: "93.4%",
@@ -77,6 +81,7 @@ const models = [
     inferenceTime: "112ms",
   },
   {
+    id: "image-classification",
     name: "Image Classification Model",
     type: "ResNet-50",
     accuracy: "95.1%",
@@ -85,7 +90,6 @@ const models = [
     rating: 4.7,
     reviews: 189,
     inferenceTime: "203ms",
-    discount: "60% OFF"
   },
 ];
 

@@ -1,7 +1,8 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, TrendingUp, Clock, Star } from "lucide-react";
+import { Play, TrendingUp, Star } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface ModelCardProps {
   name: string;
@@ -12,7 +13,7 @@ interface ModelCardProps {
   rating: number;
   reviews: number;
   inferenceTime: string;
-  discount?: string;
+  id: string;
 }
 
 const ModelCard = ({
@@ -24,8 +25,10 @@ const ModelCard = ({
   rating,
   reviews,
   inferenceTime,
-  discount,
+  id,
 }: ModelCardProps) => {
+  const navigate = useNavigate();
+
   const statusConfig = {
     production: { label: "EN PRODUCCIÓN", color: "bg-accent text-accent-foreground" },
     training: { label: "ENTRENANDO", color: "bg-primary text-primary-foreground" },
@@ -33,15 +36,13 @@ const ModelCard = ({
   };
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow group">
+    <Card 
+      className="overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer"
+      onClick={() => navigate(`/model/${id}`)}
+    >
       {/* Image/Visual Area */}
       <div className="relative bg-muted h-48 flex items-center justify-center">
         <div className="text-6xl opacity-20">📊</div>
-        {discount && (
-          <Badge className="absolute top-2 left-2 bg-accent text-accent-foreground">
-            {discount}
-          </Badge>
-        )}
         <Badge className={`absolute top-2 right-2 ${statusConfig[status].color}`}>
           {statusConfig[status].label}
         </Badge>
@@ -84,11 +85,26 @@ const ModelCard = ({
         </div>
 
         <div className="flex gap-2 pt-2">
-          <Button className="flex-1" size="sm">
+          <Button 
+            className="flex-1" 
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              // Handle retrain
+            }}
+          >
             <Play className="w-4 h-4 mr-1" />
             Retrain
           </Button>
-          <Button variant="outline" size="sm" className="flex-1">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-1"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/model/${id}?tab=metrics`);
+            }}
+          >
             <TrendingUp className="w-4 h-4 mr-1" />
             Métricas
           </Button>
