@@ -14,6 +14,7 @@ import logging
 from config import settings
 from preprocessing import DataPreprocessor
 from monitoring import monitor
+from analytics import router as analytics_router
 
 # Setup logging
 logging.basicConfig(level=settings.log_level)
@@ -34,6 +35,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include analytics router
+app.include_router(analytics_router)
 
 # Global variables for model and preprocessor
 model = None

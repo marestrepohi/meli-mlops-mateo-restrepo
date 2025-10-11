@@ -29,19 +29,35 @@ Un sistema completo de MLOps para predecir precios de viviendas utilizando el da
 - **API REST**: Endpoints para predicciones individuales y en batch
 - **Tracking con MLflow**: Seguimiento de experimentos, métricas y artefactos visuales
 - **Artefactos de Evaluación**: Plots automáticos (residuals, feature importance, predictions)
+- **Frontend Interactivo**: 6 páginas con visualizaciones completas de todos los procesos MLOps
+- **Análisis EDA**: Estadísticas, distribuciones, correlaciones y feature importance
+- **Data Lineage**: Seguimiento de versiones y comparación de datasets
+- **Drift Detection**: Monitoreo estadístico (KS test) con alertas y severidad
+- **Datos Sintéticos**: Generador de datos con drift configurable para testing
 - **Monitoreo en Producción**: Métricas de performance, latencia y drift detection
 - **Containerización**: Docker y docker-compose para despliegue portable
 - **CI/CD**: Pipeline automatizado con GitHub Actions
 - **Testing**: Suite de tests unitarios e integración
 
 ### 🔧 Stack Tecnológico
+
+**Backend:**
 - **ML Framework**: scikit-learn
 - **API**: FastAPI + Uvicorn
 - **Tracking**: MLflow (open-source)
+- **Analytics**: scipy, matplotlib, seaborn
 - **Containerización**: Docker + docker-compose
 - **Testing**: pytest
 - **CI/CD**: GitHub Actions
-- **Monitoring**: Custom metrics + Prometheus-ready
+
+**Frontend:**
+- **Framework**: React 18 + TypeScript
+- **Build Tool**: Vite
+- **UI**: shadcn/ui + Radix UI + Tailwind CSS
+- **Charts**: Recharts
+- **HTTP Client**: Axios
+- **State**: TanStack Query (React Query)
+- **Routing**: React Router v6
 
 ## 🏗 Arquitectura
 
@@ -84,11 +100,24 @@ Un sistema completo de MLOps para predecir precios de viviendas utilizando el da
 
 ## 🚀 Inicio Rápido
 
-### Opción 1: Docker (Recomendado)
+### Opción 1: Script Automático (Más Rápido) ⚡
 
 ```bash
+# Inicia backend + frontend automáticamente
+./start.sh
 
+# Accede a:
+# Frontend: http://localhost:5173
+# Backend:  http://localhost:8000
+# API Docs: http://localhost:8000/docs
 
+# Para detener todo:
+./stop.sh
+```
+
+### Opción 2: Docker (Recomendado para producción)
+
+```bash
 # Construir y levantar servicios
 docker-compose up --build
 

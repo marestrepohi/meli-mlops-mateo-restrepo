@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     model_path: Path = MODELS_DIR / "production"
     
     # Data
-    data_path: Path = DATA_DIR / "boston_housing.csv"
+    data_path: Path = DATA_DIR / "housing.csv"
     
     # Monitoring
     enable_monitoring: bool = True

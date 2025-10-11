@@ -5,8 +5,9 @@ import mlflow
 import mlflow.sklearn
 import numpy as np
 import yaml
+import json
 from pathlib import Path
-from sklearn.linear_model import LinearRegression, Ridge
+from sklearn.linear_model import LinearRegression, Ridge, Lasso
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import joblib
@@ -14,8 +15,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from typing import Any, Dict, Tuple
 
-from .config import settings
-from .preprocessing import DataPreprocessor
+from config import settings
+from preprocessing import DataPreprocessor
 
 
 class ModelTrainer:
