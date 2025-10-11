@@ -1,19 +1,15 @@
-import Hero from "@/components/Hero";
-import Features from "@/components/Features";
-import Pipeline from "@/components/Pipeline";
-import Metrics from "@/components/Metrics";
-import APIDemo from "@/components/APIDemo";
-import Footer from "@/components/Footer";
+import Navbar from "@/components/Navbar";
+import Sidebar from "@/components/Sidebar";
+import Dashboard from "@/components/Dashboard";
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-background">
-      <Hero />
-      <Features />
-      <Pipeline />
-      <Metrics />
-      <APIDemo />
-      <Footer />
+      <Navbar />
+      <div className="flex">
+        <Sidebar />
+        <Dashboard />
+      </div>
     </div>
   );
 };
