@@ -22,11 +22,10 @@ const Navbar = () => {
             </div>
           </Link>
 
-          {/* Location */}
+          {/* Model Status */}
           <div className="hidden md:flex items-center gap-1 text-sm">
-            <MapPin className="w-4 h-4" />
-            <span className="text-muted-foreground">Enviar a</span>
-            <span className="font-medium">Producción</span>
+            <span className="text-muted-foreground">Sistema</span>
+            <span className="font-medium text-green-500">● Activo</span>
           </div>
 
           {/* Search Bar */}
@@ -64,37 +63,7 @@ const Navbar = () => {
             to="/" 
             className={`hover:text-primary transition-colors font-medium whitespace-nowrap ${isActive('/') ? 'text-primary' : ''}`}
           >
-            Dashboard
-          </Link>
-          <Link 
-            to="/eda" 
-            className={`hover:text-primary transition-colors whitespace-nowrap ${isActive('/eda') ? 'text-primary' : ''}`}
-          >
-            EDA Explorer
-          </Link>
-          <Link 
-            to="/lineage" 
-            className={`hover:text-primary transition-colors whitespace-nowrap ${isActive('/lineage') ? 'text-primary' : ''}`}
-          >
-            Data Lineage
-          </Link>
-          <Link 
-            to="/mlflow" 
-            className={`hover:text-primary transition-colors whitespace-nowrap ${isActive('/mlflow') ? 'text-primary' : ''}`}
-          >
-            MLflow
-          </Link>
-          <Link 
-            to="/drift" 
-            className={`hover:text-primary transition-colors whitespace-nowrap ${isActive('/drift') ? 'text-primary' : ''}`}
-          >
-            Drift Monitor
-          </Link>
-          <Link 
-            to="/generator" 
-            className={`hover:text-primary transition-colors whitespace-nowrap ${isActive('/generator') ? 'text-primary' : ''}`}
-          >
-            Data Generator
+            Modelos
           </Link>
         </nav>
       </div>
