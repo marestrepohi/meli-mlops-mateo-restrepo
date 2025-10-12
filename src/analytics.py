@@ -13,8 +13,8 @@ import mlflow
 from sklearn.preprocessing import StandardScaler
 from scipy import stats
 
-from .config import settings
-from .monitoring import monitor
+from config import settings
+from monitoring import monitor
 
 router = APIRouter(prefix="/api/v1", tags=["analytics"])
 
