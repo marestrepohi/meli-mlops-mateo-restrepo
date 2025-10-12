@@ -16,8 +16,4 @@ from .config import settings
 from .preprocessing import DataPreprocessor
 from .monitoring import monitor
 
-__all__ = [
-    "settings",
-    "DataPreprocessor", 
-    "monitor"
-]
+__all__ = ["settings", "DataPreprocessor", "monitor"]
