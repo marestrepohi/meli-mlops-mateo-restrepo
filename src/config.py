@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     """Application settings."""
 
     # MLflow
-    mlflow_tracking_uri: str = "http://localhost:5000"
+    mlflow_tracking_uri: str = str(PROJECT_ROOT / "mlruns")
     mlflow_experiment_name: str = "housing-price-prediction"
 
     # API
@@ -42,7 +42,8 @@ class Settings(BaseSettings):
     model_path: Path = MODELS_DIR / "production"
 
     # Data
-    data_path: Path = DATA_DIR / "housing.csv"
+    data_path: Path = DATA_DIR / "raw/HousingData.csv"
+    raw_data_path: Optional[Path] = DATA_DIR / "raw"
 
     # Monitoring
     enable_monitoring: bool = True
@@ -55,6 +56,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "allow"  # Allow extra fields from environment
 
 
 # Global settings instance

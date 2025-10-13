@@ -105,10 +105,10 @@ for i in {1..30}; do
 done
 
 # Start frontend
-if check_port 5173; then
-    echo -e "${YELLOW}⚠ Port 5173 is already in use. Frontend may already be running.${NC}"
+if check_port 8080; then
+    echo -e "${YELLOW}⚠ Port 8080 is already in use. Frontend may already be running.${NC}"
 else
-    echo -e "${BLUE}🌐 Starting Frontend on port 5173...${NC}"
+    echo -e "${BLUE}🌐 Starting Frontend on port 8080...${NC}"
     cd front
     if command -v bun &> /dev/null; then
         bun dev > ../logs/frontend.log 2>&1 &
@@ -126,18 +126,18 @@ echo "================================"
 echo -e "${GREEN}✅ MLOps System is running!${NC}"
 echo ""
 echo "🔗 Access the application:"
-echo "   Frontend:  http://localhost:5173"
+echo "   Frontend:  http://localhost:8080"
 echo "   Backend:   http://localhost:8000"
 echo "   API Docs:  http://localhost:8000/docs"
 echo "   MLflow:    http://localhost:5000 (if running separately)"
 echo ""
 echo "📊 Available Pages:"
-echo "   Dashboard:     http://localhost:5173/"
-echo "   EDA Explorer:  http://localhost:5173/eda"
-echo "   Data Lineage:  http://localhost:5173/lineage"
-echo "   MLflow Viewer: http://localhost:5173/mlflow"
-echo "   Drift Monitor: http://localhost:5173/drift"
-echo "   Data Generator: http://localhost:5173/generator"
+echo "   Dashboard:     http://localhost:8080/"
+echo "   EDA Explorer:  http://localhost:8080/eda"
+echo "   Data Lineage:  http://localhost:8080/lineage"
+echo "   MLflow Viewer: http://localhost:8080/mlflow"
+echo "   Drift Monitor: http://localhost:8080/drift"
+echo "   Data Generator: http://localhost:8080/generator"
 echo ""
 echo "🛑 To stop all services, run: ./stop.sh"
 echo "================================"

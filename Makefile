@@ -1,6 +1,7 @@
 # Makefile para Housing Price Prediction MLOps Project
 
-.PHONY: help setup install download-data train test lint format run-api run-mlflow docker-build docker-up docker-down clean
+.PHONY: help install setup data train serve frontend stop clean test docker-build docker-run docker-stop \
+        dvc-repro dvc-status dvc-metrics dvc-plots dvc-dag dvc-push dvc-pull dvc-clean
 
 # Variables
 PYTHON := python3
@@ -143,3 +144,96 @@ docs-open: ## Abrir documentación de la API
 mlflow-open: ## Abrir UI de MLflow
 	@echo "$(BLUE)Opening MLflow UI...$(NC)"
 	@python -m webbrowser http://localhost:5000 2>/dev/null || echo "Open http://localhost:5000 in your browser"
+
+# ============================================
+# DVC Commands
+# ============================================
+
+dvc-init: ## Inicializar DVC
+	@echo "$(BLUE)🔧 Initializing DVC...$(NC)"
+	dvc init
+	@echo "$(GREEN)✅ DVC initialized!$(NC)"
+
+dvc-repro: ## Ejecutar pipeline DVC completo
+	@echo "$(BLUE)🚀 Running DVC pipeline...$(NC)"
+	@./run_dvc_pipeline.sh
+
+dvc-repro-force: ## Forzar re-ejecución del pipeline
+	@echo "$(BLUE)🚀 Force running DVC pipeline...$(NC)"
+	dvc repro -f
+
+dvc-status: ## Ver status del pipeline DVC
+	@echo "$(BLUE)📊 DVC Status:$(NC)"
+	dvc status
+
+dvc-metrics: ## Mostrar métricas de DVC
+	@echo "$(BLUE)📈 DVC Metrics:$(NC)"
+	dvc metrics show
+
+dvc-metrics-diff: ## Comparar métricas con versión anterior
+	@echo "$(BLUE)📊 DVC Metrics Diff:$(NC)"
+	dvc metrics diff
+
+dvc-plots: ## Generar plots de DVC
+	@echo "$(BLUE)📊 Generating DVC plots...$(NC)"
+	dvc plots show
+
+dvc-plots-diff: ## Comparar plots con versión anterior
+	@echo "$(BLUE)📊 DVC Plots Diff:$(NC)"
+	dvc plots diff
+
+dvc-dag: ## Mostrar DAG del pipeline
+	@echo "$(BLUE)📊 DVC Pipeline DAG:$(NC)"
+	dvc dag
+
+dvc-dag-ascii: ## Mostrar DAG en ASCII art
+	@echo "$(BLUE)📊 DVC Pipeline DAG (ASCII):$(NC)"
+	dvc dag --ascii
+
+dvc-push: ## Push datos y modelos a remote
+	@echo "$(BLUE)📤 Pushing to DVC remote...$(NC)"
+	dvc push
+
+dvc-pull: ## Pull datos y modelos desde remote
+	@echo "$(BLUE)📥 Pulling from DVC remote...$(NC)"
+	dvc pull
+
+dvc-fetch: ## Fetch datos sin checkout
+	@echo "$(BLUE)📥 Fetching from DVC remote...$(NC)"
+	dvc fetch
+
+dvc-checkout: ## Checkout datos trackeados
+	@echo "$(BLUE)🔄 Checking out DVC files...$(NC)"
+	dvc checkout
+
+dvc-clean: ## Limpiar caché de DVC
+	@echo "$(BLUE)🧹 Cleaning DVC cache...$(NC)"
+	dvc gc -w
+
+dvc-clean-all: ## Limpiar todo el caché de DVC
+	@echo "$(BLUE)🧹 Cleaning all DVC cache...$(NC)"
+	dvc gc -wa
+
+dvc-diff: ## Ver diferencias en datos
+	@echo "$(BLUE)📊 DVC Diff:$(NC)"
+	dvc diff
+
+dvc-exp-show: ## Mostrar experimentos
+	@echo "$(BLUE)🧪 DVC Experiments:$(NC)"
+	dvc exp show
+
+dvc-cheatsheet: ## Mostrar cheatsheet de comandos DVC
+	@./dvc_cheatsheet.sh
+
+# Workflows combinados DVC
+dvc-full-pipeline: dvc-pull dvc-repro dvc-metrics dvc-push ## Pipeline completo: pull → run → push
+	@echo "$(GREEN)✅ Full DVC pipeline completed!$(NC)"
+
+dvc-experiment: ## Ejecutar experimento completo
+	@echo "$(BLUE)🧪 Running DVC experiment...$(NC)"
+	dvc exp run
+	dvc metrics show
+	dvc plots show
+
+dvc-compare: dvc-metrics-diff dvc-plots-diff ## Comparar con versión anterior
+	@echo "$(GREEN)✅ Comparison completed!$(NC)"

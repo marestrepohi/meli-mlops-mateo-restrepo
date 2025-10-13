@@ -132,7 +132,7 @@ async def get_feature_importance():
     try:
         import joblib
 
-        model_path = settings.model_path / "model.pkl"
+        model_path = settings.model_path / "model.joblib"
 
         if not model_path.exists():
             raise HTTPException(status_code=404, detail="Model not found")
@@ -140,9 +140,15 @@ async def get_feature_importance():
         model = joblib.load(model_path)
 
         if hasattr(model, "feature_importances_"):
-            preprocessor_path = settings.model_path / "preprocessor.pkl"
-            preprocessor_data = joblib.load(preprocessor_path)
-            feature_names = preprocessor_data["feature_names"]
+            preprocessor_path = settings.model_path / "preprocessor.joblib"
+            preprocessor = joblib.load(preprocessor_path)
+            
+            # Get feature names from the preprocessor
+            if hasattr(preprocessor, 'feature_names_in_'):
+                feature_names = preprocessor.feature_names_in_.tolist()
+            else:
+                # Fallback to default feature names
+                feature_names = ['CRIM', 'ZN', 'INDUS', 'CHAS', 'NOX', 'RM', 'AGE', 'DIS', 'RAD', 'TAX', 'PTRATIO', 'B', 'LSTAT']
 
             importances = model.feature_importances_
             indices = np.argsort(importances)[::-1]
@@ -160,6 +166,233 @@ async def get_feature_importance():
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/eda/profiling-report")
+async def get_profiling_report():
+    """Get the full profiling report data (JSON) for frontend visualization."""
+    try:
+        from pathlib import Path
+        import json
+        
+        json_path = Path(settings.data_path).parent / "reports" / "eda_data.json"
+        
+        if not json_path.exists():
+            raise HTTPException(
+                status_code=404,
+                detail="EDA report not found. Run 'python src/download_data.py' to generate it."
+            )
+        
+        with open(json_path, "r") as f:
+            data = json.load(f)
+        
+        return data
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/eda/profiling-report-html")
+async def get_profiling_report_html():
+    """Get the HTML profiling report URL."""
+    try:
+        from pathlib import Path
+        
+        html_path = Path(settings.data_path).parent / "reports" / "eda_report.html"
+        
+        if not html_path.exists():
+            raise HTTPException(
+                status_code=404,
+                detail="EDA report not found. Run 'python src/download_data.py' to generate it."
+            )
+        
+        return {
+            "report_path": str(html_path.absolute()),
+            "report_url": f"file://{html_path.absolute()}",
+            "exists": True,
+            "size_kb": html_path.stat().st_size / 1024,
+            "last_modified": datetime.fromtimestamp(html_path.stat().st_mtime).isoformat()
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/eda/variables")
+async def get_variables_summary():
+    """
+    Get summary statistics for all variables from EDA report.
+    Optimized for frontend visualization.
+    """
+    try:
+        from pathlib import Path
+        import json
+        
+        json_path = Path(settings.data_path).parent / "reports" / "eda_data.json"
+        
+        if not json_path.exists():
+            raise HTTPException(status_code=404, detail="EDA report not found.")
+        
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+        
+        variables_data = {}
+        
+        if 'variables' in data:
+            for var_name, var_info in data['variables'].items():
+                variables_data[var_name] = {
+                    "type": var_info.get('type'),
+                    "statistics": {
+                        "count": var_info.get('count'),
+                        "mean": var_info.get('mean'),
+                        "std": var_info.get('std'),
+                        "min": var_info.get('min'),
+                        "max": var_info.get('max'),
+                        "25%": var_info.get('25%'),
+                        "50%": var_info.get('50%'),
+                        "75%": var_info.get('75%'),
+                        "skewness": var_info.get('skewness'),
+                        "kurtosis": var_info.get('kurtosis'),
+                    },
+                    "missing": {
+                        "n_missing": var_info.get('n_missing', 0),
+                        "p_missing": var_info.get('p_missing', 0),
+                    },
+                    "histogram": var_info.get('histogram', {}),
+                    "n_distinct": var_info.get('n_distinct'),
+                    "n_zeros": var_info.get('n_zeros', 0),
+                }
+        
+        return {
+            "variables": variables_data,
+            "n_variables": len(variables_data),
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading variables: {str(e)}")
+
+
+@router.get("/eda/alerts")
+async def get_eda_alerts():
+    """
+    Get data quality alerts from EDA report (in Spanish).
+    """
+    try:
+        from pathlib import Path
+        import json
+        
+        json_path = Path(settings.data_path).parent / "reports" / "eda_data.json"
+        
+        if not json_path.exists():
+            raise HTTPException(status_code=404, detail="EDA report not found.")
+        
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+        
+        alerts = data.get('alerts', [])
+        
+        # Translate alerts to Spanish
+        translated_alerts = []
+        for alert in alerts:
+            translated = translate_alert_to_spanish(alert)
+            translated_alerts.append(translated)
+        
+        return {
+            "alerts": translated_alerts,
+            "n_alerts": len(translated_alerts),
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading alerts: {str(e)}")
+
+
+def translate_alert_to_spanish(alert: str) -> dict:
+    """
+    Translate EDA alerts to Spanish and categorize them.
+    """
+    alert_lower = alert.lower()
+    
+    # Determine severity
+    severity = "info"
+    if "high" in alert_lower or "highly" in alert_lower:
+        severity = "warning"
+    if "missing" in alert_lower or "skewed" in alert_lower:
+        severity = "warning"
+    if "zeros" in alert_lower and "has" in alert_lower:
+        severity = "info"
+    
+    # Determine category
+    category = "general"
+    if "correlated" in alert_lower or "correlation" in alert_lower:
+        category = "correlación"
+    elif "missing" in alert_lower:
+        category = "datos_faltantes"
+    elif "skewed" in alert_lower or "skewness" in alert_lower:
+        category = "distribución"
+    elif "zeros" in alert_lower:
+        category = "valores_cero"
+    elif "unique" in alert_lower or "distinct" in alert_lower:
+        category = "unicidad"
+    
+    # Basic translations
+    translations = {
+        "is highly overall correlated with": "está altamente correlacionada con",
+        "and": "y",
+        "other fields": "otros campos",
+        "field": "campo",
+        "fields": "campos",
+        "has": "tiene",
+        "missing values": "valores faltantes",
+        "is missing": "faltan",
+        "is highly skewed": "está altamente sesgada",
+        "has zeros": "tiene ceros",
+        "is constant": "es constante",
+        "is unique": "es única",
+        "HIGH": "ALTO",
+        "zeros": "ceros",
+    }
+    
+    translated = alert
+    for eng, esp in translations.items():
+        translated = translated.replace(eng, esp)
+    
+    return {
+        "message": translated,
+        "original": alert,
+        "severity": severity,
+        "category": category,
+    }
+
+
+@router.get("/eda/correlations")
+async def get_correlations():
+    """
+    Get correlation matrix from EDA report.
+    """
+    try:
+        from pathlib import Path
+        import json
+        
+        json_path = Path(settings.data_path).parent / "reports" / "eda_data.json"
+        
+        if not json_path.exists():
+            raise HTTPException(status_code=404, detail="EDA report not found.")
+        
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+        
+        correlations = data.get('correlations', {})
+        
+        return {
+            "correlations": correlations,
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading correlations: {str(e)}")
 
 
 # ============================================================================
@@ -256,7 +489,7 @@ async def get_experiments():
         mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
         experiments = mlflow.search_experiments()
 
-        return [
+        exp_list = [
             {
                 "experiment_id": exp.experiment_id,
                 "name": exp.name,
@@ -266,6 +499,8 @@ async def get_experiments():
             }
             for exp in experiments
         ]
+        
+        return {"experiments": exp_list}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -312,7 +547,7 @@ async def get_mlflow_runs(
 
             runs_data.append(run_dict)
 
-        return runs_data
+        return {"runs": runs_data}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

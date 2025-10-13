@@ -4,7 +4,7 @@ pandas
 scikit-learn
 scipy
 joblib
-
+xgboost
 # Visualization
 matplotlib
 seaborn
@@ -24,6 +24,10 @@ prometheus-client
 
 # Download dataset
 kagglehub
+kaggle
+
+# EDA and Profiling
+ydata-profiling
 
 # Testing
 pytest
@@ -39,3 +43,5 @@ mypy
 python-dotenv
 pyyaml
 click
+dvc 
+-e .
