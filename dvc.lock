@@ -1,0 +1,143 @@
+schema: '2.0'
+stages:
+  data_ingestion:
+    cmd: python src/data_ingestion.py
+    deps:
+    - path: src/data_ingestion.py
+      hash: md5
+      md5: ce0dc42be723ce042c8a0215c4beb65f
+      size: 7943
+    outs:
+    - path: data/raw/HousingData.csv
+      hash: md5
+      md5: 9d9460d994e88c868ee98ea23e6c4111
+      size: 35008
+    - path: data/reports/
+      hash: md5
+      md5: 7661134e76e6ab3bb8104d786bfd4597.dir
+      size: 39750377
+      nfiles: 3
+  data_preparation:
+    cmd: python src/data_preparation.py
+    deps:
+    - path: data/raw/HousingData.csv
+      hash: md5
+      md5: 9d9460d994e88c868ee98ea23e6c4111
+      size: 35008
+    - path: src/data_preparation.py
+      hash: md5
+      md5: 99bc7ce659da80629387129c19b06747
+      size: 23769
+    params:
+      params.yaml:
+        data_ingestion:
+          raw_data_path: data/raw/HousingData.csv
+          target_column: MEDV
+          test_size: 0.2
+          random_state: 42
+          shuffle: true
+        data_preparation:
+          scaling_method: standard
+          handle_missing: drop
+          remove_duplicates: true
+          outlier_detection: false
+          outlier_method: iqr
+          outlier_threshold: 3
+          test_size: 0.2
+          random_state: 42
+          shuffle: true
+        preprocessing:
+          processed_data_dir: data/processed
+          standard_scaler_path: models/standard_scaler.pkl
+    outs:
+    - path: data/processed/
+      hash: md5
+      md5: 262350a5468be8776e9c8c54d4a1d63b.dir
+      size: 264732
+      nfiles: 6
+    - path: models/standard_scaler.pkl
+      hash: md5
+      md5: 934483e9f9c7918e02584e1613124941
+      size: 1403
+  model_train:
+    cmd: python src/model_train.py
+    deps:
+    - path: data/processed/test.csv
+      hash: md5
+      md5: dbc8d727cafe473b364c25d1d52b68bf
+      size: 26678
+    - path: data/processed/train.csv
+      hash: md5
+      md5: 93fb0538a3d2afc80aa1db1394ef1eb0
+      size: 105688
+    - path: models/standard_scaler.pkl
+      hash: md5
+      md5: 934483e9f9c7918e02584e1613124941
+      size: 1403
+    - path: src/model_train.py
+      hash: md5
+      md5: d80e496c8a92e47438a47a3bf3941780
+      size: 28329
+    params:
+      params.yaml:
+        data_ingestion.target_column: MEDV
+        mlflow.experiment_name: housing-price-prediction
+        mlflow.tracking_uri: ./mlruns
+        model_training.model_output_dir: models
+        preprocessing.processed_data_dir: data/processed
+    outs:
+    - path: models/metrics.json
+      hash: md5
+      md5: 77ebe83e1ec478a83e8c5ba86780ee14
+      size: 283
+    - path: models/model_info.json
+      hash: md5
+      md5: b342101a0ee2b0ada028ec4f3fceed79
+      size: 270
+    - path: models/xgboost_model.pkl
+      hash: md5
+      md5: fc70c8187cea65a5528b8d787833fb15
+      size: 298069
+  model_register:
+    cmd: python src/model_register.py --stage Staging
+    deps:
+    - path: models/metrics.json
+      hash: md5
+      md5: 77ebe83e1ec478a83e8c5ba86780ee14
+      size: 283
+    - path: models/model_info.json
+      hash: md5
+      md5: b342101a0ee2b0ada028ec4f3fceed79
+      size: 270
+    - path: models/standard_scaler.pkl
+      hash: md5
+      md5: 934483e9f9c7918e02584e1613124941
+      size: 1403
+    - path: models/xgboost_model.pkl
+      hash: md5
+      md5: fc70c8187cea65a5528b8d787833fb15
+      size: 298069
+    - path: src/model_register.py
+      hash: md5
+      md5: 4affa1c3eca720fba1f3baf77d8abec8
+      size: 13720
+    params:
+      params.yaml:
+        mlflow:
+          tracking_uri: ./mlruns
+          experiment_name: housing-price-prediction
+          production_model_name: housing-price-production
+          log_artifacts: true
+          log_model: true
+          log_preprocessor: true
+          log_plots: true
+          auto_log: false
+    outs:
+    - path: models/registered_model_info.json
+      hash: md5
+      md5: c276590fb6982b766d7f3f6a8832c17d
+      size: 917
+    - path: models/registration_metrics.json
+      hash: md5
+      md5: a13a61494e4570561c78a64870187ff5
+      size: 274
