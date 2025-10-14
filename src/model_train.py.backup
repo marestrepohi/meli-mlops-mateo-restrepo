@@ -25,7 +25,7 @@ from typing import Any, Dict, Tuple, List
 import xgboost as xgb
 
 from config import settings
-from src.data_preparation import DataPreprocessor
+from data_preparation import DataPreprocessor
 
 
 class ModelTrainer:

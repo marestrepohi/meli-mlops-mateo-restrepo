@@ -65,6 +65,12 @@ const Navbar = () => {
           >
             Modelos
           </Link>
+          <Link 
+            to="/api-tester" 
+            className={`hover:text-primary transition-colors font-medium whitespace-nowrap ${isActive('/api-tester') ? 'text-primary' : ''}`}
+          >
+            Probar API
+          </Link>
         </nav>
       </div>
     </header>

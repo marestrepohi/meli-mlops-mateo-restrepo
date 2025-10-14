@@ -54,102 +54,72 @@ def load_params(params_path: str) -> Dict[str, Any]:
         raise
 
 
-class PreprocesadorDatos:
-    """
-    Clase para encapsular todo el proceso de preprocesamiento de datos para el
-    modelo de predicción de precios de vivienda.
-    """
+class DataPreprocessor:
+    """Utility class to load, clean, split and persist data artifacts."""
 
     def __init__(self, params: Optional[Dict[str, Any]] = None):
-        """
-        Inicializa el preprocesador con un escalador y atributos vacíos.
-        
-        Args:
-            params: Diccionario con parámetros de configuración (opcional)
-        """
         self.escalador = StandardScaler()
         self.nombres_caracteristicas: List[str] | None = None
         self.nombre_objetivo: str | None = None
         self.params = params or {}
 
-    def cargar_datos(self, ruta_datos: Path) -> Optional[pd.DataFrame]:
-        """
-        Carga los datos desde un archivo CSV.
-
-        Args:
-            ruta_datos (Path): La ruta al archivo .csv.
-
-        Returns:
-            pd.DataFrame | None: Un DataFrame con los datos cargados o None si ocurre un error.
-        """
+    # ------------------------------------------------------------------
+    # Public API (English naming used by training & inference services)
+    # ------------------------------------------------------------------
+    def load_data(self, ruta_datos: Path) -> Optional[pd.DataFrame]:
         try:
-            logger.info(f"📂 Cargando datos desde {ruta_datos}...")
+            logger.info(f"📂 Loading data from {ruta_datos}...")
             df = pd.read_csv(ruta_datos)
-            logger.info(f"✅ Datos cargados con éxito. Dimensiones: {df.shape}")
-            logger.info(f"📊 Columnas: {', '.join(df.columns.tolist())}")
+            logger.info(f"✅ Data loaded successfully. Shape: {df.shape}")
+            logger.info(f"📊 Columns: {', '.join(df.columns.tolist())}")
             return df
         except FileNotFoundError:
-            logger.error(f"❌ Error: El archivo no fue encontrado en la ruta: {ruta_datos}")
+            logger.error(f"❌ File not found: {ruta_datos}")
             return None
         except pd.errors.ParserError as e:
-            logger.error(f"❌ Error al parsear el archivo CSV: {e}")
+            logger.error(f"❌ CSV parsing error: {e}")
             return None
         except Exception as e:
-            logger.exception(f"❌ Ocurrió un error inesperado al cargar los datos: {e}")
+            logger.exception(f"❌ Unexpected error when loading data: {e}")
             return None
 
-    def limpiar_datos(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Limpia el DataFrame manejando valores nulos y eliminando duplicados.
-        Usa parámetros de preprocessing si están disponibles.
+    def identify_features(self, df: pd.DataFrame, target_column: str | None = None) -> None:
+        target = target_column or self.params.get('data_ingestion', {}).get('target_column', 'MEDV')
+        if target not in df.columns:
+            raise ValueError(f"Target column '{target}' not found in dataset")
+        self.nombre_objetivo = target
+        self.nombres_caracteristicas = [col for col in df.columns if col != target]
+        logger.info(f"🎯 Target column: {self.nombre_objetivo}")
+        logger.info(f"� Feature columns: {', '.join(self.nombres_caracteristicas)}")
 
-        Args:
-            df (pd.DataFrame): El DataFrame a limpiar.
-
-        Returns:
-            pd.DataFrame: El DataFrame limpio.
-        """
-        logger.info("🧹 Limpiando los datos...")
-
-        # Obtener parámetros de preprocessing
+    def clean_data(self, df: pd.DataFrame) -> pd.DataFrame:
+        logger.info("🧹 Cleaning dataset...")
         preprocessing_params = self.params.get('preprocessing', {})
-        handle_missing = preprocessing_params.get('handle_missing', 'mean')  # Cambiado de 'median' a 'mean'
         remove_duplicates = preprocessing_params.get('remove_duplicates', True)
 
-        # Manejo de valores nulos - SIEMPRE usar media (nunca eliminar)
         nulos = df.isnull().sum()
         if nulos.any():
-            logger.warning(f"⚠️ Se encontraron valores nulos:\n{nulos[nulos > 0]}")
-            
-            # Forzar el uso de media para reemplazar valores nulos
+            logger.warning(f"⚠️ Missing values detected:\n{nulos[nulos > 0]}")
             columnas_numericas = df.select_dtypes(include=np.number).columns
             valores_reemplazados = {}
-            
             for col in columnas_numericas:
                 if df[col].isnull().any():
                     media = df[col].mean()
                     num_nulos = df[col].isnull().sum()
-                    # Uso correcto sin inplace para evitar FutureWarning
                     df[col] = df[col].fillna(media)
-                    valores_reemplazados[col] = {
-                        'nulos': num_nulos,
-                        'media': round(media, 4)
-                    }
-                    logger.info(f"   📊 {col}: {num_nulos} nulos reemplazados con media = {media:.4f}")
-            
-            logger.info(f"✅ Total: {sum(v['nulos'] for v in valores_reemplazados.values())} valores nulos reemplazados con la media.")
+                    valores_reemplazados[col] = {'nulos': num_nulos, 'media': round(media, 4)}
+                    logger.info(f"   📊 {col}: {num_nulos} nulls filled with mean = {media:.4f}")
+            logger.info(f"✅ Total replaced values: {sum(v['nulos'] for v in valores_reemplazados.values())}")
         else:
-            logger.info("✅ No se encontraron valores nulos en los datos.")
+            logger.info("✅ No missing values detected")
 
-        # Eliminación de filas duplicadas
         if remove_duplicates:
             len_original = len(df)
             df = df.drop_duplicates()
             if len(df) < len_original:
-                num_duplicados = len_original - len(df)
-                logger.info(f"🗑️ Se eliminaron {num_duplicados} filas duplicadas.")
+                logger.info(f"🗑️ Removed {len_original - len(df)} duplicated rows")
             else:
-                logger.info("✅ No se encontraron filas duplicadas.")
+                logger.info("✅ No duplicated rows found")
 
         return df
 
@@ -280,6 +250,21 @@ class PreprocesadorDatos:
             y_test.to_csv(ruta_y_test, index=False, header=True)
             logger.info(f"   ✅ y_test guardado: {ruta_y_test}")
             
+            # ✨ NUEVO: Guardar datasets completos (features + target) para entrenamiento
+            # Estos archivos son necesarios para model_train.py
+            train_completo = X_train.copy()
+            train_completo[self.nombre_objetivo] = y_train.values
+            ruta_train = directorio / "train.csv"
+            train_completo.to_csv(ruta_train, index=False)
+            logger.info(f"   ✅ train.csv guardado: {ruta_train}")
+            
+            test_completo = X_test.copy()
+            test_completo[self.nombre_objetivo] = y_test.values
+            ruta_test = directorio / "test.csv"
+            test_completo.to_csv(ruta_test, index=False)
+            logger.info(f"   ✅ test.csv guardado: {ruta_test}")
+            logger.info(f"   ✅ y_test guardado: {ruta_y_test}")
+            
             logger.info("✅ Todos los datos procesados guardados exitosamente.")
         except Exception as e:
             logger.exception(f"❌ No se pudieron guardar los datos procesados: {e}")
@@ -352,6 +337,100 @@ class PreprocesadorDatos:
             logger.exception(f"❌ Error inesperado durante el preprocesamiento para inferencia: {e}")
             raise
 
+    # ------------------------------------------------------------------
+    # Backwards-compatible aliases (legacy Spanish method names)
+    # ------------------------------------------------------------------
+    def cargar_datos(self, ruta_datos: Path) -> Optional[pd.DataFrame]:
+        return self.load_data(ruta_datos)
+
+    def limpiar_datos(self, df: pd.DataFrame) -> pd.DataFrame:
+        return self.clean_data(df)
+
+    def guardar_preprocesador(self, ruta: Path):
+        self.save_preprocessor(ruta)
+
+    def cargar_preprocesador(self, ruta: Path):
+        self.load_preprocessor(ruta)
+
+    def procesar_para_inferencia(self, datos_entrada: Dict[str, Any]) -> np.ndarray:
+        return self.preprocess_for_inference(datos_entrada)
+
+    # ------------------------------------------------------------------
+    # English method names expected by training/inference modules
+    # ------------------------------------------------------------------
+    def split_features_target(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series]:
+        if self.nombre_objetivo is None:
+            self.identify_features(df)
+        X = df[self.nombres_caracteristicas]
+        y = df[self.nombre_objetivo]
+        return X, y
+
+    def split_train_test(
+        self,
+        X: pd.DataFrame,
+        y: pd.Series,
+        test_size: Optional[float] = None,
+        random_state: Optional[int] = None,
+        shuffle: Optional[bool] = None,
+    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+        data_ingestion_params = self.params.get('data_ingestion', {})
+        if test_size is None:
+            test_size = data_ingestion_params.get('test_size', 0.2)
+        if random_state is None:
+            random_state = data_ingestion_params.get('random_state', 42)
+        if shuffle is None:
+            shuffle = data_ingestion_params.get('shuffle', True)
+
+        logger.info("✂️ Splitting dataset")
+        logger.info(f"   - test_size: {test_size}")
+        logger.info(f"   - random_state: {random_state}")
+        logger.info(f"   - shuffle: {shuffle}")
+
+        X_train, X_test, y_train, y_test = train_test_split(
+            X,
+            y,
+            test_size=test_size,
+            random_state=random_state,
+            shuffle=shuffle,
+        )
+
+        logger.info(f"✅ Split completed: train={X_train.shape}, test={X_test.shape}")
+        return X_train, X_test, y_train, y_test
+
+    def scale_features(
+        self, X_train: pd.DataFrame, X_test: pd.DataFrame
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        logger.info("📏 Scaling features with StandardScaler...")
+        X_train_scaled = self.escalador.fit_transform(X_train)
+        X_test_scaled = self.escalador.transform(X_test)
+        logger.info("✅ Features scaled")
+        return X_train_scaled, X_test_scaled
+
+    def save_preprocessor(self, ruta: Path) -> None:
+        logger.info(f"💾 Saving StandardScaler to {ruta}...")
+        estado = {
+            "escalador": self.escalador,
+            "nombres_caracteristicas": self.nombres_caracteristicas,
+            "nombre_objetivo": self.nombre_objetivo,
+        }
+        joblib.dump(estado, ruta)
+        logger.info("✅ StandardScaler saved")
+
+    def load_preprocessor(self, ruta: Path) -> None:
+        logger.info(f"📂 Loading StandardScaler from {ruta}...")
+        estado = joblib.load(ruta)
+        self.escalador = estado["escalador"]
+        self.nombres_caracteristicas = estado["nombres_caracteristicas"]
+        self.nombre_objetivo = estado["nombre_objetivo"]
+        logger.info("✅ StandardScaler loaded")
+
+    def preprocess_for_inference(self, datos_entrada: Dict[str, Any]) -> np.ndarray:
+        if not self.nombres_caracteristicas:
+            raise ValueError("Feature names are not loaded; load the preprocessor first")
+        df = pd.DataFrame([datos_entrada])
+        df = df[self.nombres_caracteristicas]
+        return self.escalador.transform(df)
+
 
 # ============================================================================
 # FUNCIÓN PRINCIPAL
@@ -392,46 +471,45 @@ def main():
     
     # Rutas de salida
     directorio_procesados = Path(preprocessing_params.get('processed_data_dir', 'data/processed'))
-    ruta_preprocesador = Path(preprocessing_params.get('preprocessor_path', 'models/preprocessor.pkl'))
+    ruta_scaler = Path(preprocessing_params.get('standard_scaler_path', 'models/standard_scaler.pkl'))
     
     # Crear directorios si no existen
     directorio_procesados.mkdir(parents=True, exist_ok=True)
-    ruta_preprocesador.parent.mkdir(parents=True, exist_ok=True)
+    ruta_scaler.parent.mkdir(parents=True, exist_ok=True)
     
     logger.info("📁 Rutas configuradas:")
     logger.info(f"   - Datos raw: {ruta_datos_raw}")
     logger.info(f"   - Datos procesados: {directorio_procesados}")
-    logger.info(f"   - Preprocesador: {ruta_preprocesador}")
+    logger.info(f"   - StandardScaler: {ruta_scaler}")
     
     # ========================================================================
     # PASO 3: Instanciar preprocesador con parámetros
     # ========================================================================
-    prep = PreprocesadorDatos(params=params)
+    prep = DataPreprocessor(params=params)
     
     # ========================================================================
     # PASO 4: Cargar y limpiar datos
     # ========================================================================
-    df = prep.cargar_datos(ruta_datos_raw)
+    df = prep.load_data(ruta_datos_raw)
     if df is None:
         logger.error("❌ No se pudieron cargar los datos. Abortando...")
         return
     
-    df_limpio = prep.limpiar_datos(df)
+    df_limpio = prep.clean_data(df)
     logger.info(f"📊 Datos limpios: {df_limpio.shape[0]} filas, {df_limpio.shape[1]} columnas")
     
     # ========================================================================
     # PASO 5: Dividir dataset (usa parámetros de params.yaml automáticamente)
     # ========================================================================
     target_column = data_ingestion_params.get('target_column', 'MEDV')
-    X_train, X_test, y_train, y_test = prep.dividir_entrenamiento_prueba(
-        df_limpio, 
-        target_column=target_column
-    )
+    prep.identify_features(df_limpio, target_column)
+    X, y = prep.split_features_target(df_limpio)
+    X_train, X_test, y_train, y_test = prep.split_train_test(X, y)
     
     # ========================================================================
     # PASO 6: Escalar características
     # ========================================================================
-    X_train_escalado, X_test_escalado = prep.escalar_caracteristicas(X_train, X_test)
+    X_train_escalado, X_test_escalado = prep.scale_features(X_train, X_test)
     
     # Convertir arreglos escalados de vuelta a DataFrames (mantiene nombres de columnas)
     X_train_escalado = pd.DataFrame(
@@ -457,9 +535,9 @@ def main():
     )
     
     # ========================================================================
-    # PASO 8: Guardar preprocesador
+    # PASO 8: Guardar StandardScaler
     # ========================================================================
-    prep.guardar_preprocesador(ruta_preprocesador)
+    prep.save_preprocessor(ruta_scaler)
     
     # ========================================================================
     # RESUMEN FINAL

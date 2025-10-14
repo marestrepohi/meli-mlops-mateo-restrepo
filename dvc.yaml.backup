@@ -1,0 +1,228 @@
+# =====================================================================
+# DVC Pipeline Configuration
+# Data Version Control para MLOps - Housing Price Prediction
+# =====================================================================
+# Este archivo define el pipeline completo de datos y modelos:
+# 1. Descarga de datos desde Kaggle
+# 2. Preparación y EDA
+# 3. Entrenamiento de modelos
+# 4. Evaluación y registro
+# =====================================================================
+
+stages:
+  # ===================================================================
+  # Stage 1: Data Ingestion
+  # Descarga datos desde Kaggle, genera dataset limpio y reporte EDA
+  # ===================================================================
+  data_ingestion:
+    cmd: python src/data_ingestion.py
+    deps:
+      - src/data_ingestion.py
+    outs:
+      - data/raw/HousingData.csv
+      - data/reports/
+
+  # ===================================================================
+  # Stage 2: Data Preparation
+  # Limpieza, transformación y feature engineering
+  # ===================================================================
+  data_preparation:
+    cmd: python src/data_preparation.py
+    deps:
+      - src/data_preparation.py
+      - data/raw/HousingData.csv
+    params:
+      - data_ingestion
+      - preprocessing
+      - data_preparation
+    outs:
+      - data/processed/
+      - models/standard_scaler.pkl
+
+  # ===================================================================
+  # Stage 3: Model Training
+  # Entrenamiento del modelo XGBoost con MLflow
+  # ===================================================================
+  model_train:
+    cmd: python src/model_train.py
+    deps:
+      - src/model_train.py
+      - data/processed/train.csv
+      - data/processed/test.csv
+    params:
+      - data_ingestion.target_column
+      - preprocessing.processed_data_dir
+      - model_training
+      - mlflow
+    outs:
+      - models/xgboost_model.pkl
+      - models/metrics.json:
+          cache: false
+      - models/feature_importance.json:
+          cache: false
+      - models/model_info.json:
+          cache: false
+
+  # ===================================================================
+  # NOTA: Los siguientes stages están deshabilitados en la versión simplificada
+  # Si quieres usar estrategias más complejas, descomenta los stages necesarios
+  # ===================================================================
+
+  # train_tuned:
+    cmd: python src/train.py --strategy tuning
+    deps:
+      - src/train.py
+      - src/config.py
+      - data/processed/train.csv
+      - data/processed/test.csv
+    params:
+      - model_building.xgboost_tuning
+    outs:
+      - models/xgboost_tuned.pkl
+      - models/tuned_best_params.json:
+          cache: false
+    metrics:
+      - models/tuned_metrics.json:
+          cache: false
+    plots:
+      - models/tuned_predictions.csv:
+          x: actual
+          y: predicted
+          title: "Tuned Model Predictions"
+
+  # ===================================================================
+  # Stage 5: Feature Selection
+  # Selección de features más importantes
+  # ===================================================================
+  feature_selection:
+    cmd: python src/train.py --strategy feature_selection
+    deps:
+      - src/train.py
+      - models/xgboost_baseline.pkl
+      - data/processed/train.csv
+    params:
+      - model_building.feature_selection
+    outs:
+      - models/selected_features.json:
+          cache: false
+      - models/feature_importance_plot.png:
+          cache: false
+
+  # ===================================================================
+  # Stage 6: Final Model Training
+  # Modelo final con features seleccionadas y tuning
+  # ===================================================================
+  train_final:
+    cmd: python src/train.py --strategy final
+    deps:
+      - src/train.py
+      - src/config.py
+      - data/processed/train.csv
+      - data/processed/test.csv
+      - models/selected_features.json
+      - models/tuned_best_params.json
+    params:
+      - model_building.xgboost_final
+    outs:
+      - models/xgboost_final.pkl
+      - models/final_model_info.json:
+          cache: false
+    metrics:
+      - models/final_metrics.json:
+          cache: false
+    plots:
+      - models/final_predictions.csv:
+          x: actual
+          y: predicted
+          title: "Final Model Predictions"
+      - models/final_feature_importance.png:
+          cache: false
+
+  # ===================================================================
+  # Stage 7: Model Evaluation
+  # Evaluación comparativa de todos los modelos
+  # ===================================================================
+  evaluate:
+    cmd: python src/evaluate.py
+    deps:
+      - src/evaluate.py
+      - models/xgboost_baseline.pkl
+      - models/xgboost_tuned.pkl
+      - models/xgboost_final.pkl
+      - data/processed/test.csv
+    params:
+      - model_evaluation
+    outs:
+      - models/evaluation/comparison_report.html:
+          cache: false
+      - models/evaluation/model_comparison.json:
+          cache: false
+    metrics:
+      - models/evaluation/metrics_comparison.json:
+          cache: false
+    plots:
+      - models/evaluation/models_comparison.csv:
+          x: model
+          y: rmse
+          title: "Models RMSE Comparison"
+
+  # ===================================================================
+  # Stage 8: Model Registration
+  # Registro del mejor modelo en MLflow Model Registry
+  # ===================================================================
+  register_model:
+    cmd: python src/register_model.py
+    deps:
+      - src/register_model.py
+      - models/xgboost_final.pkl
+      - models/evaluation/model_comparison.json
+    params:
+      - mlflow
+    outs:
+      - models/registered_model_info.json:
+          cache: false
+    metrics:
+      - models/registration_metrics.json:
+          cache: false
+
+# =====================================================================
+# Plots Configuration
+# Definición de visualizaciones para DVC Studio
+# =====================================================================
+plots:
+  - models/baseline_predictions.csv:
+      template: scatter
+      x: actual
+      y: predicted
+      title: "Baseline Model: Actual vs Predicted"
+      x_label: "Actual Price"
+      y_label: "Predicted Price"
+  
+  - models/tuned_predictions.csv:
+      template: scatter
+      x: actual
+      y: predicted
+      title: "Tuned Model: Actual vs Predicted"
+      x_label: "Actual Price"
+      y_label: "Predicted Price"
+  
+  - models/final_predictions.csv:
+      template: scatter
+      x: actual
+      y: predicted
+      title: "Final Model: Actual vs Predicted"
+      x_label: "Actual Price"
+      y_label: "Predicted Price"
+  
+  - models/evaluation/models_comparison.csv:
+      template: bar_horizontal
+      x: rmse
+      y: model
+      title: "Model Performance Comparison (RMSE)"
+      x_label: "RMSE"
+      y_label: "Model"
+
+# =====================================================================
+# Metrics Configuration  
+# Las métricas se definen dentro de cada stage, no aquí globalmente
+# =====================================================================

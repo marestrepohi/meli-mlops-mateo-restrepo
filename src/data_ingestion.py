@@ -208,14 +208,22 @@ def main():
     Función principal que orquesta la ejecución del script.
     """
 
-    #Descargar y cargar los datos
+    # Descargar y cargar los datos
     df = descargar_y_cargar_datos()
+    
+    if df is None:
+        logger.error("❌ No se pudo cargar el dataset. Abortando...")
+        sys.exit(1)
 
-    #Generar reporte de análisis exploratorio (opcional)
+    # Guardar dataset limpio en data/housing.csv
+    output_path = DATA_DIR / "housing.csv"
+    df.to_csv(output_path, index=False)
+    logger.info(f"✅ Dataset limpio guardado en: {output_path}")
+
+    # Generar reporte de análisis exploratorio
     generar_reporte_eda(df)
 
-
-    logger.info("✅ ¡Proceso de preparación de datos completado exitosamente!")
+    logger.info("✅ ¡Proceso de ingesta de datos completado exitosamente!")
 
 
 

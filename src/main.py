@@ -13,7 +13,7 @@ from pathlib import Path
 import logging
 
 from config import settings
-from src.data_preparation import DataPreprocessor
+from data_preparation import DataPreprocessor
 from monitoring import monitor
 from analytics import router as analytics_router
 

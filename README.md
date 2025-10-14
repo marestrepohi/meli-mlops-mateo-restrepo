@@ -100,19 +100,46 @@ Un sistema completo de MLOps para predecir precios de viviendas utilizando el da
 
 ## 🚀 Inicio Rápido
 
-### Opción 1: Script Automático (Más Rápido) ⚡
+### Pre-requisitos
+
+- Python 3.10+
+- Credenciales de Kaggle (para descargar dataset)
+
+### Opción 1: Desarrollo Local
 
 ```bash
-# Inicia backend + frontend automáticamente
-./start.sh
+# 1. Crear entorno virtual
+python3 -m venv venv
+source venv/bin/activate  # En Windows: venv\Scripts\activate
 
-# Accede a:
-# Frontend: http://localhost:5173
-# Backend:  http://localhost:8000
-# API Docs: http://localhost:8000/docs
+# 2. Instalar dependencias
+pip install --upgrade pip
+pip install -r requirements.txt
+pip install -e .
 
-# Para detener todo:
-./stop.sh
+# 3. Configurar credenciales de Kaggle
+cp .env.example .env
+# Editar .env y agregar tus credenciales:
+# KAGGLE_USERNAME=tu_usuario
+# KAGGLE_KEY=tu_api_key
+
+# 4. Crear directorios necesarios
+mkdir -p data/{raw,processed,reports} models logs
+
+# 5. Ejecutar pipeline de entrenamiento con DVC
+dvc repro
+
+# 6. Iniciar MLflow UI (en otra terminal)
+mlflow ui --host 0.0.0.0 --port 5000
+
+# 7. Iniciar API
+python src/main.py
+# O con uvicorn:
+uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+
+# Acceder a:
+# - API Docs: http://localhost:8000/docs
+# - MLflow UI: http://localhost:5000
 ```
 
 ### Opción 2: Docker (Recomendado para producción)
@@ -124,28 +151,9 @@ docker-compose up --build
 # Acceder a:
 # - API: http://localhost:8000/docs
 # - MLflow: http://localhost:5000
-```
 
-### Opción 2: Local
-
-```bash
-
-
-# Setup inicial
-chmod +x setup.sh train.sh run_api.sh
-./setup.sh
-
-# Activar entorno virtual
-source venv/bin/activate
-
-# Descargar datos
-python src/download_data.py
-
-# Entrenar modelo
-./train.sh
-
-# Iniciar API
-./run_api.sh
+# Detener servicios
+docker-compose down
 ```
 
 ### 📝 Probar la API
@@ -175,124 +183,217 @@ curl -X POST "http://localhost:8000/predict" \
 
 # Métricas
 curl http://localhost:8000/metrics
+
+# También puedes usar Swagger UI: http://localhost:8000/docs
+```
+
+## 🔄 Pipeline de Entrenamiento con DVC
+
+### Ejecutar Pipeline Completo
+
+```bash
+# Ejecutar todas las etapas del pipeline
+dvc repro
+
+# Ver estado del pipeline
+dvc status
+
+# Ver métricas
+dvc metrics show
+
+# Ver DAG del pipeline
+dvc dag
+
+# Comparar experimentos
+dvc metrics diff
+```
+
+### Ejecutar Etapas Individuales
+
+```bash
+# Solo descarga de datos
+dvc repro data_ingestion
+
+# Solo preprocesamiento
+dvc repro preprocess
+
+# Solo entrenamiento baseline
+dvc repro train_baseline
+
+# Solo modelo final
+dvc repro train_final
+```
+
+### Ver Resultados en MLflow
+
+```bash
+# Iniciar MLflow UI
+mlflow ui --host 0.0.0.0 --port 5000
+
+# Acceder a: http://localhost:5000
+# Aquí puedes:
+# - Comparar experimentos
+# - Ver métricas (RMSE, MAE, R²)
+# - Descargar artefactos (plots, modelos)
+# - Revisar hiperparámetros
+```
+
+### Reentrenar con Nuevos Parámetros
+
+```bash
+# 1. Editar params.yaml
+# Ejemplo: Cambiar max_depth de 6 a 10
+nano params.yaml
+
+# 2. Ejecutar pipeline (DVC detecta cambios automáticamente)
+dvc repro
+
+# 3. Ver comparación con experimento anterior
+dvc metrics diff
+mlflow ui  # Comparar visualmente en la UI
 ```
 
 ## 📁 Estructura del Proyecto
 
 ```
-server/
+.
 ├── src/
-│   ├── config.py           # Configuración centralizada
-│   ├── download_data.py    # Descarga del dataset
-│   ├── preprocessing.py    # Pipeline de preprocesamiento
-│   ├── train.py           # Pipeline de entrenamiento
-│   ├── main.py            # API FastAPI
-│   └── monitoring.py      # Sistema de monitoreo
-├── tests/
-│   └── test_system.py     # Tests unitarios
-├── data/                  # Datasets (gitignored)
-├── models/                # Modelos entrenados (gitignored)
-├── logs/                  # Logs de predicciones
-├── mlruns/               # MLflow tracking
-├── requirements.txt      # Dependencias Python
-├── setup.py             # Instalación del paquete
-├── Dockerfile           # Imagen Docker
-├── docker-compose.yml   # Orquestación de servicios
-├── setup.sh            # Script de setup
-├── train.sh            # Script de entrenamiento
-└── run_api.sh          # Script para iniciar API
+│   ├── config.py              # Configuración centralizada
+│   ├── data_ingestion.py      # Descarga e ingesta de datos (DVC stage 1)
+│   ├── data_preparation.py    # Preprocesamiento y feature engineering
+│   ├── train.py               # Pipeline de entrenamiento XGBoost
+│   ├── evaluate.py            # Evaluación y comparación de modelos
+│   ├── register_model.py      # Registro en MLflow Model Registry
+│   ├── main.py                # API FastAPI
+│   ├── monitoring.py          # Sistema de monitoreo
+│   └── analytics.py           # Endpoints de analytics
+├── data/                      # Datasets (generado por pipeline, en .gitignore)
+│   ├── raw/                   # Datos crudos descargados
+│   ├── processed/             # Datos procesados (train.csv, test.csv)
+│   └── reports/               # Reportes EDA
+├── models/                    # Modelos entrenados (en .gitignore)
+│   ├── xgboost_baseline.pkl
+│   ├── xgboost_tuned.pkl
+│   ├── xgboost_final.pkl
+│   ├── evaluation/            # Reportes de evaluación
+│   └── production/            # Modelo en producción
+├── mlruns/                    # MLflow tracking data (en .gitignore)
+├── logs/                      # Logs de predicciones (en .gitignore)
+├── front/                     # Frontend React (opcional)
+├── notebooks/                 # Jupyter notebooks para exploración
+├── tests/                     # Tests unitarios e integración
+├── .github/workflows/         # CI/CD con GitHub Actions
+├── dvc.yaml                   # Definición del pipeline DVC
+├── params.yaml                # Hiperparámetros y configuración
+├── requirements.txt           # Dependencias Python
+├── docker-compose.yml         # Orquestación de servicios
+├── Dockerfile                 # Imagen Docker para la API
+└── README.md                  # Este archivo
 ```
 
 ## 🔬 Pipeline de Entrenamiento
 
+### Etapas del Pipeline DVC
+
+El pipeline está definido en `dvc.yaml` y consta de 8 etapas:
+
+1. **data_ingestion**: Descarga dataset desde Kaggle
+2. **preprocess**: Limpieza, transformación y split train/test
+3. **train_baseline**: XGBoost baseline con todas las features
+4. **train_tuned**: Hyperparameter tuning con GridSearchCV
+5. **feature_selection**: Selección de top features por importancia
+6. **train_final**: Modelo final con features seleccionadas
+7. **evaluate**: Comparación de todos los modelos
+8. **register_model**: Registro del mejor modelo en MLflow
+
 ### Componentes
 
-1. **Data Download** (`download_data.py`)
-   - Descarga automática desde Kaggle usando `kagglehub`
-   - Validación de datos (missing values, tipos, estadísticas)
-   - Guardado en formato CSV
+**Data Ingestion** (`data_ingestion.py`)
+- Descarga automática desde Kaggle usando API oficial
+- Validación de datos (missing values, tipos, estadísticas)
+- Generación de reporte EDA con `ydata-profiling`
+- Configuración de credenciales desde .env
 
-2. **Preprocessing** (`preprocessing.py`)
-   - Limpieza de datos (missing values, duplicados)
-   - Identificación automática de features y target
-   - Split train/test (80/20)
-   - Standardización con `StandardScaler`
-   - Persistencia del preprocessor para inferencia
+**Preprocessing** (`data_preparation.py`)
+- Limpieza de datos (missing values, duplicados)
+- Identificación automática de features y target
+- Split train/test configurable desde `params.yaml`
+- Standardización con `StandardScaler`
+- Persistencia del preprocessor para inferencia
 
-3. **Training** (`train.py`)
-   - Entrenamiento de múltiples modelos:
-     - Linear Regression (baseline)
-     - Ridge Regression
-     - Random Forest Regressor
-     - Gradient Boosting Regressor
-   - Tracking automático con MLflow:
-     - Parámetros
-     - Métricas (RMSE, MAE, R²)
-     - Artefactos (modelo, preprocessor)
-   - Selección del mejor modelo
-   - Guardado en `/models/production/`
+**Training** (`train.py`)
+- Múltiples estrategias de XGBoost:
+  - Baseline con todas las features
+  - Hyperparameter tuning con GridSearchCV
+  - Feature selection por importancia
+  - Modelo final optimizado
+- Tracking automático con MLflow:
+  - Parámetros (todos los hiperparámetros)
+  - Métricas (RMSE, MAE, R², MSE)
+  - Artefactos (plots de evaluación, modelo, preprocessor)
+- Generación de plots automáticos:
+  - Predictions vs Actual
+  - Residuals plot
+  - Residuals distribution
+  - Feature importance (top 15)
+
+**Evaluation** (`evaluate.py`)
+- Comparación de todos los modelos entrenados
+- Generación de reportes HTML
+- Métricas detalladas para cada modelo
+
+**Model Registration** (`register_model.py`)
+- Registro del mejor modelo en MLflow Model Registry
+- Versionado automático
+- Metadatos del modelo
 
 ### Métricas Evaluadas
 
-- **RMSE**: Error cuadrático medio (penaliza outliers)
-- **MAE**: Error absoluto medio (interpretable)
-- **R²**: Varianza explicada (0-1, mayor es mejor)
+- **RMSE**: Root Mean Squared Error (penaliza outliers)
+- **MAE**: Mean Absolute Error (interpretable en unidades originales)
+- **R²**: Coeficiente de determinación (0-1, mayor es mejor)
+- **MSE**: Mean Squared Error
 
 ### Reproducibilidad
 
 - Seeds fijos (`random_state=42`)
 - Versionado de código con Git
+- Versionado de datos con DVC
 - Tracking completo con MLflow
-- Configuración centralizada (`.env` y `params.yaml`)
+- Configuración centralizada en `params.yaml`
 
-### 📋 Configuración con params.yaml
+### Configuración con params.yaml
 
-**NUEVO:** El proyecto ahora incluye `params.yaml` para centralizar hiperparámetros y configuraciones, inspirado en [mejores prácticas de MLOps](https://github.com/entbappy/End-to-end-Youtube-Sentiment).
-
-#### Beneficios
-
-- ✅ **Experimentación sin modificar código**: Cambia hiperparámetros editando YAML
-- ✅ **Reproducibilidad**: Versionado de configuraciones con Git
-- ✅ **Tracking automático**: MLflow registra todos los parámetros
-- ✅ **Colaboración**: Equipo puede compartir configuraciones fácilmente
-
-#### Ejemplo de Uso
+El archivo `params.yaml` centraliza todos los hiperparámetros y configuraciones:
 
 ```yaml
-# params.yaml
+# Ejemplo: Configurar XGBoost baseline
 model_building:
-  random_forest:
-    n_estimators: 200     # Cambiar de 100 a 200
-    max_depth: 15         # Aumentar profundidad
-    min_samples_split: 5  # Reducir overfitting
+  xgboost_baseline:
+    n_estimators: 100
+    max_depth: 6
+    learning_rate: 0.1
+    subsample: 0.8
+    colsample_bytree: 0.8
+
+# Configurar preprocessing
+preprocessing:
+  scaling_method: "standard"
+  handle_missing: "drop"
+  remove_duplicates: true
+
+# Configurar data split
+data_ingestion:
+  test_size: 0.2
+  random_state: 42
+  shuffle: true
 ```
 
-```bash
-# Reentrenar con nuevos parámetros
-
-python src/train.py
-```
-
-MLflow automáticamente registra todos los cambios y permite comparar experimentos.
-
-#### Artefactos Visuales Mejorados
-
-El pipeline ahora genera automáticamente plots de evaluación en cada entrenamiento:
-
-- **Predictions vs Actual**: Visualiza precisión del modelo
-- **Residuals Plot**: Detecta patrones en errores
-- **Residuals Distribution**: Valida normalidad de residuos
-- **Feature Importance**: Top 15 features más importantes (RF/GB)
-
-Todos los plots se guardan automáticamente en MLflow como artefactos.
-
-#### Guía Completa
-
-Ver [PARAMS_GUIDE.md](PARAMS_GUIDE.md) para:
-- Explicación detallada de cada parámetro
-- Ejemplos de tuning
-- Best practices
-- Troubleshooting
+**Beneficios:**
+- ✅ Experimentación sin modificar código
+- ✅ Versionado de configuraciones con Git
+- ✅ Tracking automático en MLflow
+- ✅ Colaboración simplificada
 
 ## 🌐 API REST
 
@@ -412,7 +513,104 @@ health = monitor.get_health_status()
 drift = monitor.detect_drift(baseline_stats)
 ```
 
-## 🐳 Despliegue
+## 🔧 Troubleshooting
+
+### Error: "dvc: command not found"
+```bash
+pip install dvc
+```
+
+### Error: "Kaggle credentials not found"
+```bash
+# Crear archivo .env con credenciales
+cp .env.example .env
+# Editar y agregar:
+# KAGGLE_USERNAME=tu_usuario
+# KAGGLE_KEY=tu_api_key
+```
+
+Para obtener tu API key de Kaggle:
+1. Ve a https://www.kaggle.com/settings/account
+2. En "API" section, click "Create New API Token"
+3. Se descargará `kaggle.json` con tus credenciales
+
+### Error: "Model not loaded" en la API
+```bash
+# Asegúrate de que el pipeline haya terminado exitosamente
+ls -la models/production/
+
+# Debe contener:
+# - model.joblib
+# - preprocessor.joblib
+# - metrics.json
+
+# Si no existe, ejecuta:
+dvc repro
+```
+
+### Error: "MLflow tracking URI not accessible"
+```bash
+# Verifica que MLflow esté corriendo
+mlflow ui --host 0.0.0.0 --port 5000
+
+# O cambia a file-based tracking en .env:
+# MLFLOW_TRACKING_URI=./mlruns
+```
+
+### El pipeline DVC no detecta cambios
+```bash
+# Forzar re-ejecución de una etapa
+dvc repro --force train_baseline
+
+# Ver qué cambió
+dvc status
+
+# Limpiar caché
+dvc gc
+```
+
+### Problemas de memoria durante entrenamiento
+```bash
+# Reducir n_estimators en params.yaml
+# O usar menos datos para pruebas rápidas
+```
+
+## 🛠 Comandos Útiles
+
+```bash
+# Ver métricas de todos los experimentos
+dvc metrics show
+
+# Comparar con experimento anterior
+dvc metrics diff HEAD~1
+
+# Ver gráfica del pipeline
+dvc dag
+
+# Verificar qué cambió en el pipeline
+dvc status
+
+# Limpiar outputs del pipeline
+dvc remove dvc.yaml
+
+# Re-ejecutar todo desde cero
+rm -rf models/ data/processed/ data/reports/
+dvc repro
+
+# Ver logs de MLflow
+cat mlruns/*/meta.yaml
+
+# Verificar salud de la API
+curl http://localhost:8000/health | jq
+
+# Ver métricas de la API
+curl http://localhost:8000/metrics | jq
+
+# Test rápido de predicción
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d @tests/sample_input.json
+```
 
 ### Docker Compose
 

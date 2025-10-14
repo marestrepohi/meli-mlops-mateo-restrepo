@@ -5,9 +5,11 @@ scikit-learn
 scipy
 joblib
 xgboost
+optuna
 # Visualization
 matplotlib
 seaborn
+shap
 
 # MLflow for experiment tracking and model registry
 mlflow
@@ -44,4 +46,3 @@ python-dotenv
 pyyaml
 click
 dvc 
--e .
