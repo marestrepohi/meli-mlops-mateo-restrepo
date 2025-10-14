@@ -1,0 +1,41 @@
+# Core ML & Data
+numpy
+pandas
+scikit-learn
+scipy
+joblib
+
+# Visualization
+matplotlib
+seaborn
+
+# MLflow for experiment tracking and model registry
+mlflow
+
+# API Framework
+FastAPI
+uvicorn
+pydantic
+python-multipart
+
+# Data validation and monitoring
+pydantic-settings
+prometheus-client
+
+# Download dataset
+kagglehub
+
+# Testing
+pytest
+pytest-cov
+httpx
+
+# Code quality
+black
+flake8
+mypy
+
+# Utilities
+python-dotenv
+pyyaml
+click
