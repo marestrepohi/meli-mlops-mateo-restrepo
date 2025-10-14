@@ -13,7 +13,7 @@ __version__ = "1.0.0"
 __author__ = "Mateo Restrepo"
 
 from .config import settings
-from .preprocessing import DataPreprocessor
+from .data_preparation import DataPreprocessor
 from .monitoring import monitor
 
 __all__ = ["settings", "DataPreprocessor", "monitor"]

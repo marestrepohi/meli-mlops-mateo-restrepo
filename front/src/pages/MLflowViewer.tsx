@@ -232,6 +232,7 @@ const MLflowViewer = () => {
         <TabsList>
           <TabsTrigger value="runs">Runs</TabsTrigger>
           <TabsTrigger value="details" disabled={!selectedRun}>Run Details</TabsTrigger>
+          <TabsTrigger value="mlflow-ui">MLflow UI</TabsTrigger>
         </TabsList>
 
         {/* Runs List */}
@@ -398,6 +399,48 @@ const MLflowViewer = () => {
               )}
             </>
           ) : null}
+        </TabsContent>
+
+        {/* MLflow UI Iframe */}
+        <TabsContent value="mlflow-ui" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FlaskConical className="h-5 w-5" />
+                MLflow Web UI
+              </CardTitle>
+              <CardDescription>
+                Full MLflow tracking server interface embedded below
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="relative">
+                <Alert className="mb-4">
+                  <AlertDescription>
+                    <strong>Note:</strong> Make sure MLflow server is running on port 5000.
+                    Start it with: <code className="bg-muted px-1 py-0.5 rounded">mlflow server --host 0.0.0.0 --port 5000</code>
+                  </AlertDescription>
+                </Alert>
+                
+                <div className="border rounded-lg overflow-hidden bg-white" style={{ height: '800px' }}>
+                  <iframe
+                    src="http://localhost:5000"
+                    className="w-full h-full"
+                    title="MLflow UI"
+                    onLoad={() => console.log('✅ MLflow UI loaded')}
+                    onError={() => console.error('❌ Failed to load MLflow UI')}
+                  />
+                </div>
+                
+                <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+                  <span>🔗 Direct link: <a href="http://localhost:5000" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">http://localhost:5000</a></span>
+                  <Button variant="outline" size="sm" onClick={() => window.open('http://localhost:5000', '_blank')}>
+                    Open in New Tab
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

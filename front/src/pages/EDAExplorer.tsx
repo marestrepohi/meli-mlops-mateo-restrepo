@@ -7,6 +7,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import { edaAPI } from '@/lib/api';
 import { Loader2, Database, TrendingUp, Activity, Info, HelpCircle } from 'lucide-react';
+import { VariableCard } from '@/components/VariableCard';
+import { AlertsPanel } from '@/components/AlertsPanel';
 
 // Diccionario con explicaciones detalladas de cada feature del dataset California Housing
 const FEATURE_DESCRIPTIONS: Record<string, { name: string; description: string; interpretation: string }> = {
@@ -139,6 +141,109 @@ interface FeatureImportance {
   feature: string;
   importance: number;
 }
+
+// Component for Variables Analysis
+const VariablesAnalysis = () => {
+  const [variables, setVariables] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadVariables() {
+      try {
+        setLoading(true);
+        const data = await edaAPI.getVariables();
+        setVariables(data);
+      } catch (error) {
+        console.error('Error loading variables:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadVariables();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Cargando análisis de variables...</span>
+      </div>
+    );
+  }
+
+  if (!variables || !variables.variables) {
+    return (
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertDescription>
+          No se encontraron datos de variables. Ejecuta <code>python src/download_data.py</code> para generar el reporte.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Análisis Individual de Variables</CardTitle>
+          <CardDescription>
+            Distribuciones, estadísticas y características de cada variable ({variables.n_variables} variables)
+          </CardDescription>
+        </CardHeader>
+      </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {Object.entries(variables.variables).map(([name, data]: [string, any]) => (
+          <VariableCard key={name} name={name} data={data} />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// Component for Alerts Analysis
+const AlertsAnalysis = () => {
+  const [alerts, setAlerts] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadAlerts() {
+      try {
+        setLoading(true);
+        const data = await edaAPI.getAlerts();
+        setAlerts(data);
+      } catch (error) {
+        console.error('Error loading alerts:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadAlerts();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Cargando alertas...</span>
+      </div>
+    );
+  }
+
+  if (!alerts || !alerts.alerts) {
+    return (
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertDescription>
+          No se encontraron alertas. Ejecuta <code>python src/download_data.py</code> para generar el reporte.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  return <AlertsPanel alerts={alerts.alerts} />;
+};
 
 const EDAExplorer = () => {
   const [loading, setLoading] = useState(true);
@@ -273,6 +378,9 @@ const EDAExplorer = () => {
           <TabsTrigger value="distribution">Distribution</TabsTrigger>
           <TabsTrigger value="correlation">Correlation</TabsTrigger>
           <TabsTrigger value="importance">Feature Importance</TabsTrigger>
+          <TabsTrigger value="variables">Variables</TabsTrigger>
+          <TabsTrigger value="alerts">Alertas</TabsTrigger>
+          <TabsTrigger value="profiling">Full Report</TabsTrigger>
         </TabsList>
 
         {/* Statistics Tab */}
@@ -688,6 +796,101 @@ const EDAExplorer = () => {
                   </AlertDescription>
                 </Alert>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Variables Tab - Individual Variable Analysis */}
+        <TabsContent value="variables" className="space-y-4">
+          <VariablesAnalysis />
+        </TabsContent>
+
+        {/* Alerts Tab - Data Quality Alerts in Spanish */}
+        <TabsContent value="alerts" className="space-y-4">
+          <AlertsAnalysis />
+        </TabsContent>
+
+        {/* Full Profiling Report Tab */}
+        <TabsContent value="profiling" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                YData Profiling - Complete Report
+              </CardTitle>
+              <CardDescription>
+                Comprehensive automated data profiling report with advanced statistics, correlations, missing values analysis, and more.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Alert className="mb-4">
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Note:</strong> This report is generated using ydata-profiling. 
+                  Run <code className="bg-muted px-1 py-0.5 rounded">python src/download_data.py</code> to generate or update the report.
+                </AlertDescription>
+              </Alert>
+
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <button
+                    onClick={async () => {
+                      try {
+                        const data = await edaAPI.getProfilingReportHtml();
+                        if (data.report_url) {
+                          window.open(data.report_url, '_blank');
+                        }
+                      } catch (error) {
+                        console.error('Error opening report:', error);
+                      }
+                    }}
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+                  >
+                    Open Full HTML Report
+                  </button>
+                  
+                  <button
+                    onClick={async () => {
+                      try {
+                        const jsonData = await edaAPI.getProfilingReport();
+                        const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'eda_profiling_data.json';
+                        a.click();
+                      } catch (error) {
+                        console.error('Error downloading JSON:', error);
+                      }
+                    }}
+                    className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90"
+                  >
+                    Download JSON Data
+                  </button>
+                </div>
+
+                <div className="border rounded-lg p-4 bg-muted/50">
+                  <h3 className="font-semibold mb-2">Report Features:</h3>
+                  <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                    <li>Dataset overview and statistics</li>
+                    <li>Variable types and distributions</li>
+                    <li>Missing values analysis</li>
+                    <li>Correlation matrices (Pearson, Spearman, Kendall)</li>
+                    <li>Duplicate rows detection</li>
+                    <li>Sample data preview</li>
+                    <li>Interactions between variables</li>
+                    <li>Warnings and alerts for data quality issues</li>
+                  </ul>
+                </div>
+
+                <div className="text-sm text-muted-foreground">
+                  <p>
+                    The profiling report is automatically generated when you run the data download script. 
+                    It provides a comprehensive analysis of your dataset including distributions, correlations, 
+                    missing values, and potential data quality issues.
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

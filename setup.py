@@ -5,6 +5,7 @@ setup(
     version="1.0.0",
     description="MLOps pipeline for Boston Housing price prediction",
     author="Mateo Restrepo",
+    author_email= 'mateorestrepohiguita@gmail.com',
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     python_requires=">=3.9",

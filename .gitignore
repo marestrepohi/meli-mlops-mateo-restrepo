@@ -34,10 +34,14 @@ models/
 *.pkl
 *.joblib
 
-# Data
-data/*.csv
-data/raw/
-data/processed/
+# Data (tracked by DVC)
+/data/raw
+/data/processed
+/data/*.csv
+data/reports/*.html
+data/reports/eda_data*.json
+data/reports/data_metrics.json
+data/reports/preprocessing_metrics.json
 
 # IDE
 .vscode/
@@ -47,6 +51,10 @@ data/processed/
 
 # Environment
 .env
+
+# Kaggle credentials
+kaggle.json
+.kaggle/
 
 # Logs
 logs/

@@ -44,7 +44,7 @@ else
     echo -e "${YELLOW}No frontend PID file found${NC}"
 fi
 
-# Kill any remaining processes on ports 8000 and 5173
+# Kill any remaining processes on ports 8000 and 8080
 echo -e "${YELLOW}Checking for any remaining processes...${NC}"
 
 if lsof -Pi :8000 -sTCP:LISTEN -t >/dev/null 2>&1; then
@@ -52,9 +52,9 @@ if lsof -Pi :8000 -sTCP:LISTEN -t >/dev/null 2>&1; then
     kill -9 $(lsof -t -i:8000) 2>/dev/null || true
 fi
 
-if lsof -Pi :5173 -sTCP:LISTEN -t >/dev/null 2>&1; then
-    echo "Killing process on port 5173..."
-    kill -9 $(lsof -t -i:5173) 2>/dev/null || true
+if lsof -Pi :8080 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    echo "Killing process on port 8080..."
+    kill -9 $(lsof -t -i:8080) 2>/dev/null || true
 fi
 
 echo ""
