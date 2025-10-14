@@ -1,66 +1,24 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual environments
-venv/
-env/
-ENV/
-
-# MLflow
-mlruns/
-mlartifacts/
-
-# Models
-models/
-*.pkl
-*.joblib
-
-# Data (tracked by DVC)
-/data/raw
-/data/processed
-/data/*.csv
-data/reports/*.html
-data/reports/eda_data*.json
-data/reports/data_metrics.json
-data/reports/preprocessing_metrics.json
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Environment
-.env
-
-# Kaggle credentials
-kaggle.json
-.kaggle/
-
 # Logs
-logs/
+logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

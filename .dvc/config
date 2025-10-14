@@ -1,6 +1,0 @@
-[core]
-    remote = storage
-    autostage = true
-
-[remote "storage"]
-    url = /home/mateo/MELI/meli-mlops-mateo-restrepo/.dvc/cache
