@@ -53,8 +53,8 @@ def configurar_credenciales() -> bool:
     Returns:
         bool: True si las credenciales están disponibles, False en caso contrario.
     """
-    username = os.getenv('KAGGLE_USERNAME')
-    api_key = os.getenv('KAGGLE_KEY')
+    username = os.getenv('KAGGLE_USERNAME',"marestrepohi")
+    api_key = os.getenv('KAGGLE_KEY',"037c85291a66a2b8159a83970e814353")
 
     if not username or not api_key:
         logger.warning("⚠️ Credenciales no encontradas en las variables de entorno.")
