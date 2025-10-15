@@ -78,6 +78,7 @@ model_evaluation:
 # ----- Model Training -----
 model_training:
   model_output_dir: "models"
+  training_artifacts_dir: "mlartifacts/training"
   
   # XGBoost Hyperparameters
   xgboost:
@@ -98,6 +99,11 @@ mlflow:
   tracking_uri: "./mlruns"  # Local tracking (carpeta mlruns/)
   experiment_name: "housing-price-prediction"
   production_model_name: "housing-price-production"  # Nombre del modelo en producción
+  aliases:
+    latest: "current"
+    production: "champion"
+    staging: "challenger"
+  post_deployment_metrics_path: "mlartifacts/registry/post_deployment_metrics.json"
   
   # Registro de artefactos
   log_artifacts: true
@@ -147,6 +153,9 @@ pipeline:
   auto_retrain: false       # Reentrenamiento automático
   retrain_interval_days: 7
   min_samples_for_retrain: 1000
+  auto_register: false
+  auto_register_stage: "Staging"
+  auto_register_auto_promote: false
   
   # Validación antes de deploy
   validation_required: true

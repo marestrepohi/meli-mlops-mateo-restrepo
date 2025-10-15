@@ -57,14 +57,14 @@ stages:
       - data_ingestion.target_column
       - preprocessing.processed_data_dir
       - model_training.model_output_dir
+      - model_training.training_artifacts_dir
       - mlflow.tracking_uri
       - mlflow.experiment_name
     outs:
-      - models/xgboost_model.pkl
-      - models/metrics.json:
-          cache: false
-      - models/model_info.json:
-          cache: false
+      - mlartifacts/training/best_model.pkl
+      - mlartifacts/training/best_model_info.json
+      - mlartifacts/training/best_metrics.json
+      - mlartifacts/training/experiments_summary.json
 
   # ===================================================================
   # Stage 4: Model Registration
@@ -75,14 +75,13 @@ stages:
     cmd: python src/model_register.py --stage Staging
     deps:
       - src/model_register.py
-      - models/xgboost_model.pkl
-      - models/metrics.json
-      - models/model_info.json
+      - mlartifacts/training/best_model_info.json
+      - mlartifacts/training/best_metrics.json
+      - mlartifacts/training/best_model.pkl
       - models/standard_scaler.pkl
     params:
       - mlflow
     outs:
-      - models/registered_model_info.json:
-          cache: false
-      - models/registration_metrics.json:
-          cache: false
+      - mlartifacts/registry/registered_model_info.json
+      - mlartifacts/registry/registration_metrics.json
+      - models/production/

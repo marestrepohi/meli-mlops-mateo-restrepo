@@ -18,13 +18,13 @@ import logging
 import json
 from datetime import datetime
 
-from config import settings
-from monitoring import PredictionMonitor
+from api.monitoring import PredictionMonitor
 
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format='{"timestamp":"%(asctime)s","level":"%(levelname)s","message":"%(message)s"}',
+    datefmt='%Y-%m-%dT%H:%M:%S'
 )
 logger = logging.getLogger(__name__)
 
@@ -44,6 +44,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Middleware para logging de requests
+@app.middleware("http")
+async def log_requests(request, call_next):
+    """Middleware para logging de requests."""
+    start_time = time.time()
+    
+    try:
+        response = await call_next(request)
+        duration = (time.time() - start_time) * 1000
+        
+        logger.info(
+            f'{{"method":"{request.method}","path":"{request.url.path}",'
+            f'"status":{response.status_code},"duration_ms":{duration:.2f}}}'
+        )
+        
+        return response
+    except Exception as e:
+        duration = (time.time() - start_time) * 1000
+        logger.error(f'{{"method":"{request.method}","path":"{request.url.path}","duration_ms":{duration:.2f},"error":"{str(e)}"}}')
+        raise
+
 # Global variables
 model = None
 scaler = None
@@ -58,8 +79,8 @@ PREDICTIONS_DIR.mkdir(parents=True, exist_ok=True)
 # Directorio de modelos
 MODELS_DIR = Path(__file__).parent.parent / "models"
 
-# Todas las features disponibles (13 originales)
-ALL_FEATURES = [
+# Todas las features disponibles (13 originales) - EN EL ORDEN QUE ESPERA EL SCALER
+ALL_FEATURES_ORDERED = [
     'CRIM', 'ZN', 'INDUS', 'CHAS', 'NOX', 'RM', 'AGE',
     'DIS', 'RAD', 'TAX', 'PTRATIO', 'B', 'LSTAT'
 ]
@@ -75,21 +96,27 @@ SELECTED_FEATURES = [
 # ============================================================================
 
 class PredictionInput(BaseModel):
-    """Input schema - Acepta todas las 13 variables pero solo usa las 10 seleccionadas."""
+    """
+    Input schema - Acepta todas las 13 variables.
+    Pydantic valida automáticamente tipos y rangos con Field(ge=min, le=max).
+    """
     
-    CRIM: float = Field(..., description="Per capita crime rate by town", ge=0)
-    ZN: Optional[float] = Field(None, description="Proportion of residential land zoned for lots over 25,000 sq.ft.", ge=0, le=100)
-    INDUS: Optional[float] = Field(None, description="Proportion of non-retail business acres per town", ge=0, le=100)
-    CHAS: Optional[float] = Field(None, description="Charles River dummy variable (1 if tract bounds river; 0 otherwise)", ge=0, le=1)
-    NOX: float = Field(..., description="Nitric oxides concentration (parts per 10 million)", ge=0)
-    RM: float = Field(..., description="Average number of rooms per dwelling", gt=0)
-    AGE: float = Field(..., description="Proportion of owner-occupied units built prior to 1940", ge=0, le=100)
-    DIS: float = Field(..., description="Weighted distances to five Boston employment centres", gt=0)
-    RAD: float = Field(..., description="Index of accessibility to radial highways", ge=1)
-    TAX: float = Field(..., description="Full-value property-tax rate per $10,000", gt=0)
-    PTRATIO: float = Field(..., description="Pupil-teacher ratio by town", gt=0)
-    B: float = Field(..., description="1000(Bk - 0.63)^2", ge=0, le=1000)
-    LSTAT: float = Field(..., description="% lower status of the population", ge=0, le=100)
+    # Features requeridas (las que usa el modelo)
+    CRIM: float = Field(..., ge=0.0, le=100.0, description="Per capita crime rate")
+    NOX: float = Field(..., ge=0.3, le=1.0, description="Nitric oxides concentration")
+    RM: float = Field(..., ge=3.0, le=9.0, description="Avg rooms per dwelling")
+    AGE: float = Field(..., ge=0.0, le=100.0, description="% units built pre-1940")
+    DIS: float = Field(..., description="Weighted distances to five Boston employment centres", ge=0.5, le=12.0)
+    RAD: float = Field(..., description="Index of accessibility to radial highways", ge=1.0, le=24.0)
+    TAX: float = Field(..., description="Full-value property-tax rate per $10,000", ge=100.0, le=800.0)
+    PTRATIO: float = Field(..., description="Pupil-teacher ratio by town", ge=10.0, le=25.0)
+    B: float = Field(..., description="Proportion of Black residents index", ge=0.0, le=400.0)
+    LSTAT: float = Field(..., description="% lower status of the population", ge=0.0, le=40.0)
+    
+    # Features opcionales (las 3 restantes que el modelo no usa pero el scaler necesita)
+    ZN: Optional[float] = Field(0.0, description="Proportion of residential land zoned for lots over 25,000 sq.ft.", ge=0.0, le=100.0)
+    INDUS: Optional[float] = Field(0.0, description="Proportion of non-retail business acres per town", ge=0.0, le=30.0)
+    CHAS: Optional[float] = Field(0.0, description="Charles River dummy variable (1 if tract bounds river; 0 otherwise)", ge=0.0, le=1.0)
 
     class Config:
         json_schema_extra = {
@@ -195,6 +222,52 @@ class ModelInfoResponse(BaseModel):
     metrics: Optional[Dict] = None
 
 
+class ProductionModelInfo(BaseModel):
+    """Información completa del modelo en producción."""
+    
+    model_name: str
+    model_version: str
+    model_stage: str
+    model_type: str
+    
+    # Features
+    features: List[str]
+    n_features: int
+    all_features: List[str]
+    
+    # Performance metrics
+    metrics: Dict[str, float]
+    
+    # Model metadata
+    trained_at: Optional[str] = None
+    registered_at: Optional[str] = None
+    model_path: str
+    
+    # Production info
+    deployment_date: Optional[str] = None
+    uptime_hours: float
+    total_predictions: int
+    
+
+class MonitoringStats(BaseModel):
+    """Estadísticas de monitoreo del modelo."""
+    
+    # General
+    total_predictions: int
+    uptime_hours: float
+    predictions_per_hour: float
+    
+    # Predictions statistics
+    prediction_stats: Dict[str, float]
+    
+    # Performance statistics
+    inference_stats: Dict[str, float]
+    
+    # Recent activity
+    last_prediction_time: Optional[str] = None
+    recent_predictions: List[float]
+
+
 # ============================================================================
 # Utility Functions
 # ============================================================================
@@ -203,50 +276,64 @@ class ModelInfoResponse(BaseModel):
 
 
 def load_production_model() -> tuple:
-    """
-    Carga el modelo de producción desde models/production_model.pkl.
-    Este archivo es generado por model_register.py después de entrenar.
-    
-    Returns:
-        (model, scaler, model_info, model_metrics)
-    """
+    """Carga el modelo de producción generado por `model_register.py`."""
+
+    latest_dir = MODELS_DIR / "production" / "latest"
+    metadata_path = latest_dir / "metadata.json"
+    model_path = latest_dir / "model.pkl"
+    scaler_path = latest_dir / "scaler.pkl"
+
     try:
-        production_path = MODELS_DIR / "production_model.pkl"
-        
-        if not production_path.exists():
-            raise FileNotFoundError(
-                f"Modelo de producción no encontrado en {production_path}. "
-                "Ejecuta 'python src/model_register.py --stage Production' primero."
+        if metadata_path.exists() and model_path.exists() and scaler_path.exists():
+            logger.info(f"📦 Cargando modelo de producción desde {latest_dir}...")
+
+            model = joblib.load(model_path)
+            scaler = joblib.load(scaler_path)
+
+            with open(metadata_path, "r") as f:
+                metadata = json.load(f)
+
+            metrics = metadata.get("metrics", {})
+            model_info = metadata.get("model_info", {})
+            model_info.setdefault("model_name", metadata.get("model_name"))
+            model_info.setdefault("model_version", str(metadata.get("model_version", "unknown")))
+            model_info.setdefault("model_stage", metadata.get("stage", "Production"))
+            model_info.setdefault("features", metadata.get("features", model_info.get("feature_names", [])))
+
+            logger.info("✅ Modelo de producción cargado exitosamente")
+            logger.info(f"   📦 Versión: v{model_info.get('model_version', 'unknown')}")
+            logger.info(f"   🎯 Features: {len(model_info.get('features', []))}")
+
+            if metrics:
+                logger.info(f"   📊 Test RMSE: {metrics.get('test_rmse', 'N/A')}")
+                logger.info(f"   📊 Test R²: {metrics.get('test_r2', 'N/A')}")
+
+            return model, scaler, model_info, metrics
+
+        legacy_path = MODELS_DIR / "production_model.pkl"
+        if legacy_path.exists():
+            logger.warning(
+                f"⚠️ Bundle legacy detectado en {legacy_path}. Considera ejecutar el nuevo pipeline para actualizar."
             )
-        
-        logger.info(f"📦 Cargando modelo de producción desde {production_path}...")
-        
-        # Cargar el paquete completo
-        production_package = joblib.load(production_path)
-        
-        # Extraer componentes
-        model = production_package['model']
-        scaler = production_package['scaler']
-        model_info = production_package['model_info']
-        metrics = production_package['metrics']
-        model_version = production_package.get('model_version', 'unknown')
-        features = production_package.get('features', SELECTED_FEATURES)
-        
-        # Actualizar model_info con la versión
-        model_info['model_version'] = str(model_version)
-        model_info['model_stage'] = 'Production'
-        model_info['features'] = features
-        
-        logger.info("✅ Modelo de producción cargado exitosamente")
-        logger.info(f"   📦 Versión: v{model_version}")
-        logger.info(f"   🎯 Features: {len(features)}")
-        logger.info(f"   📊 Test RMSE: {metrics['test_rmse']:.4f}")
-        logger.info(f"   📊 Test R²: {metrics['test_r2']:.4f}")
-        
-        return model, scaler, model_info, metrics
-        
-    except Exception as e:
-        logger.error(f"❌ Error cargando modelo de producción: {e}")
+
+            package = joblib.load(legacy_path)
+            model = package['model']
+            scaler = package['scaler']
+            model_info = package['model_info']
+            metrics = package.get('metrics', {})
+            model_info['model_version'] = str(package.get('model_version', 'unknown'))
+            model_info['model_name'] = package.get('model_name', 'unknown')
+            model_info['model_stage'] = 'Production'
+            model_info['features'] = package.get('features', SELECTED_FEATURES)
+
+            return model, scaler, model_info, metrics
+
+        raise FileNotFoundError(
+            "No se encontró el paquete de producción. Ejecuta 'python src/model_register.py --stage Production'."
+        )
+
+    except Exception as exc:
+        logger.error(f"❌ Error cargando modelo de producción: {exc}")
         raise
 
 
@@ -289,24 +376,22 @@ def save_prediction(
         logger.error(f"❌ Error guardando predicción: {e}")
 
 
-def prepare_features(input_data: Dict, features: List[str]) -> pd.DataFrame:
+def prepare_features(input_data: Dict, features: List[str]) -> Dict[str, float]:
     """
     Prepara las features seleccionando solo las necesarias del input.
     
     Args:
-        input_data: Diccionario con todas las variables
-        features: Lista de features que el modelo necesita
+        input_data: Diccionario con todas las variables (13 originales)
+        features: Lista de features que el modelo necesita (10 seleccionadas)
         
     Returns:
-        DataFrame con las features en el orden correcto
+        Diccionario con las features seleccionadas en el orden correcto
     """
     # Seleccionar solo las features que el modelo usa
+    # Si falta alguna feature requerida, usar 0.0 (aunque el validador debería prevenir esto)
     selected_data = {feat: input_data.get(feat, 0.0) for feat in features}
     
-    # Crear DataFrame con el orden correcto
-    df = pd.DataFrame([selected_data], columns=features)
-    
-    return df
+    return selected_data
 
 
 # ============================================================================
@@ -324,22 +409,28 @@ async def startup_event():
     global model, scaler, model_info, model_metrics
     
     try:
-        logger.info("🚀 Iniciando Housing Price Prediction API...")
+        logger.info('{"event":"startup","service":"housing-api","version":"2.0.0"}')
         
-        # Cargar modelo de producción desde models/production_model.pkl
+    # Cargar modelo de producción desde models/production/latest/
         model, scaler, model_info, model_metrics = load_production_model()
         
         # Actualizar SELECTED_FEATURES con las features del modelo
         global SELECTED_FEATURES
         SELECTED_FEATURES = model_info.get('features', SELECTED_FEATURES)
         
-        logger.info("✅ API iniciada correctamente")
-        logger.info(f"   📁 Directorio de predicciones: {PREDICTIONS_DIR}")
-        logger.info(f"   🎯 Features del modelo: {len(SELECTED_FEATURES)}")
+        logger.info(
+            f'{{"event":"api_started","predictions_dir":"{PREDICTIONS_DIR}",'
+            f'"model_version":"{model_info.get("model_version","unknown")}",'
+            f'"features_count":{len(SELECTED_FEATURES)},'
+            f'"test_rmse":{model_metrics.get("test_rmse","N/A")},'
+            f'"test_r2":{model_metrics.get("test_r2","N/A")}}}'
+        )
         
     except Exception as e:
-        logger.error(f"❌ Error en startup: {e}")
-        logger.error(f"   Asegúrate de ejecutar: python src/model_register.py --stage Production")
+        logger.error(
+            f'{{"event":"startup_failed","error":"{str(e)}",'
+            f'"help":"Run: python src/model_register.py --stage Production"}}'
+        )
         model = None
         scaler = None
         model_info = {}
@@ -365,7 +456,7 @@ async def root():
         "model_loaded": model is not None,
         "scaler_loaded": scaler is not None,
         "model_version": model_info.get("model_version", "unknown") if model else None,
-        "features_available": ALL_FEATURES,
+        "features_available": ALL_FEATURES_ORDERED,
         "features_used_by_model": SELECTED_FEATURES,
         "endpoints": {
             "health": "/health",
@@ -393,7 +484,7 @@ async def health_check():
         model_version=model_info.get("model_version"),
         model_stage=model_info.get("model_stage"),
         uptime_seconds=uptime,
-        total_predictions=monitor.total_predictions
+        total_predictions=monitor.prediction_count
     )
 
 
@@ -410,8 +501,15 @@ async def get_model_info():
 async def predict(input_data: PredictionInput):
     """
     Realiza una predicción individual.
-    Acepta 13 variables pero usa solo las 10 seleccionadas por el modelo.
-    Guarda la predicción en data/predictions/ para seguimiento.
+    
+    FLUJO:
+    1. Entrada: 13 variables (CRIM, ZN, INDUS, CHAS, NOX, RM, AGE, DIS, RAD, TAX, PTRATIO, B, LSTAT)
+    2. StandardScaler: Se aplica a TODAS las 13 variables
+    3. Selección: Solo se usan las variables que el modelo necesita (típicamente 10)
+    4. Predicción: El modelo usa solo las variables seleccionadas (escaladas)
+    
+    Nota: El StandardScaler SIEMPRE necesita las 13 variables en el orden correcto,
+          independientemente de cuántas variables use el modelo final.
     """
     if model is None:
         raise HTTPException(status_code=503, detail="Model not loaded")
@@ -423,16 +521,26 @@ async def predict(input_data: PredictionInput):
         start_time = time.time()
         
         # Convertir input a diccionario
+        # Pydantic ya validó los rangos automáticamente
         input_dict = input_data.model_dump()
         
-        # Preparar features (seleccionar solo las que usa el modelo)
+        # PASO 1: PREPARAR LAS 13 FEATURES PARA EL SCALER
+        # El scaler SIEMPRE espera las 13 features en el orden correcto
+        X_all = pd.DataFrame(
+            [{feat: input_dict.get(feat, 0.0) for feat in ALL_FEATURES_ORDERED}], 
+            columns=ALL_FEATURES_ORDERED
+        )
+        
+        # PASO 3: APLICAR STANDARDSCALER A LAS 13 FEATURES
+        X_scaled_all = scaler.transform(X_all)  # Resultado: (1, 13)
+        
+        # PASO 4: SELECCIONAR SOLO LAS FEATURES QUE USA EL MODELO
+        # El modelo puede usar solo un subconjunto (ej: 10 de las 13)
         features = model_info.get("features", SELECTED_FEATURES)
-        X = prepare_features(input_dict, features)
+        feature_indices = [ALL_FEATURES_ORDERED.index(f) for f in features]
+        X_scaled = X_scaled_all[:, feature_indices]  # Resultado: (1, 10)
         
-        # Aplicar transformación (scaling)
-        X_scaled = scaler.transform(X)
-        
-        # Hacer predicción
+        # PASO 5: HACER PREDICCIÓN CON LAS FEATURES SELECCIONADAS
         prediction = model.predict(X_scaled)[0]
         
         # Calcular tiempo de inferencia
@@ -447,9 +555,16 @@ async def predict(input_data: PredictionInput):
         )
         
         # Registrar en monitor
-        monitor.log_prediction(float(prediction), inference_time)
+        monitor.log_prediction(
+            features=input_dict,
+            prediction=float(prediction),
+            inference_time=inference_time
+        )
         
-        logger.info(f"✅ Predicción: ${prediction:.2f}k, Tiempo: {inference_time:.2f}ms")
+        logger.info(
+            f'{{"event":"prediction_success","prediction":{float(prediction):.2f},'
+            f'"inference_ms":{inference_time:.2f},"features_count":{len(features)}}}'
+        )
         
         return PredictionOutput(
             prediction=float(prediction),
@@ -469,7 +584,13 @@ async def predict(input_data: PredictionInput):
 async def predict_batch(batch_input: BatchPredictionInput):
     """
     Realiza predicciones en batch.
-    Acepta un diccionario con múltiples registros.
+    
+    FLUJO (igual que predict individual):
+    1. Entrada: 13 variables por cada registro
+    2. StandardScaler: Se aplica a TODAS las 13 variables
+    3. Selección: Solo se usan las variables que el modelo necesita
+    4. Predicción: El modelo usa solo las variables seleccionadas (escaladas)
+    
     Cada predicción se guarda individualmente en data/predictions/.
     """
     if model is None:
@@ -483,13 +604,20 @@ async def predict_batch(batch_input: BatchPredictionInput):
         predictions = []
         features = model_info.get("features", SELECTED_FEATURES)
         
+        # El scaler necesita las 13 features originales
+        feature_indices = [ALL_FEATURES_ORDERED.index(f) for f in features]
+        
         for idx, record in enumerate(batch_input.data):
             try:
-                # Preparar features
-                X = prepare_features(record, features)
+                # Crear DataFrame con las 13 features
+                X_all = pd.DataFrame([{feat: record.get(feat, 0.0) for feat in ALL_FEATURES_ORDERED}],
+                                    columns=ALL_FEATURES_ORDERED)
                 
-                # Aplicar transformación
-                X_scaled = scaler.transform(X)
+                # Aplicar transformación con las 13 features
+                X_scaled_all = scaler.transform(X_all)
+                
+                # Seleccionar solo las features del modelo
+                X_scaled = X_scaled_all[:, feature_indices]
                 
                 # Hacer predicción
                 pred_start = time.time()
@@ -505,7 +633,11 @@ async def predict_batch(batch_input: BatchPredictionInput):
                 )
                 
                 # Registrar en monitor
-                monitor.log_prediction(float(prediction), pred_time)
+                monitor.log_prediction(
+                    features=record,
+                    prediction=float(prediction),
+                    inference_time=pred_time
+                )
                 
                 predictions.append({
                     "index": idx,
@@ -542,14 +674,438 @@ async def predict_batch(batch_input: BatchPredictionInput):
 
 @app.get("/metrics", tags=["Monitoring"])
 async def get_metrics():
-    """Obtiene métricas de monitoring."""
+    """Obtiene métricas básicas de monitoring."""
     return monitor.get_metrics()
+
+
+@app.get("/model/production-info", response_model=ProductionModelInfo, tags=["Info", "Production"])
+async def get_production_model_info():
+    """
+    Obtiene información completa del modelo en producción.
+    
+    Incluye:
+    - Información del modelo (nombre, versión, stage)
+    - Features utilizadas
+    - Métricas de performance
+    - Información de deployment
+    - Estadísticas de uso
+    """
+    if model is None:
+        raise HTTPException(status_code=503, detail="Model not loaded")
+    
+    uptime = time.time() - monitor.start_time
+    
+    # Buscar metadata adicional
+    latest_dir = MODELS_DIR / "production" / "latest"
+    metadata_path = latest_dir / "metadata.json"
+    
+    trained_at = None
+    registered_at = None
+    
+    if metadata_path.exists():
+        import json
+        with open(metadata_path) as f:
+            metadata = json.load(f)
+            trained_at = metadata.get("trained_at")
+            registered_at = metadata.get("registered_at")
+    
+    return ProductionModelInfo(
+        model_name=model_info.get("model_name", "unknown"),
+        model_version=model_info.get("model_version", "unknown"),
+        model_stage=model_info.get("model_stage", "Production"),
+        model_type=model_info.get("model_type", "unknown"),
+        features=model_info.get("features", []),
+        n_features=len(model_info.get("features", [])),
+        all_features=ALL_FEATURES_ORDERED,
+        metrics=model_metrics or {},
+        trained_at=trained_at,
+        registered_at=registered_at,
+        model_path=str(latest_dir),
+        uptime_hours=uptime / 3600,
+        total_predictions=monitor.prediction_count,
+    )
+
+
+@app.get("/monitoring/stats", response_model=MonitoringStats, tags=["Monitoring"])
+async def get_monitoring_stats():
+    """
+    Obtiene estadísticas detalladas de monitoreo.
+    
+    Incluye:
+    - Estadísticas de predicciones (media, desviación, percentiles)
+    - Estadísticas de performance (tiempo de inferencia)
+    - Actividad reciente
+    - Predicciones por hora
+    """
+    if model is None:
+        raise HTTPException(status_code=503, detail="Model not loaded")
+    
+    stats = monitor.get_detailed_stats()
+    
+    return MonitoringStats(
+        total_predictions=stats.get("total_predictions", 0),
+        uptime_hours=stats.get("uptime_hours", 0),
+        predictions_per_hour=stats.get("predictions_per_hour", 0),
+        prediction_stats=stats.get("prediction_stats", {}),
+        inference_stats=stats.get("inference_stats", {}),
+        last_prediction_time=stats.get("last_prediction_time"),
+        recent_predictions=stats.get("recent_predictions", []),
+    )
+
+
+@app.get("/monitoring/drift", tags=["Monitoring"])
+async def detect_drift(threshold: float = 2.0):
+    """
+    Detecta drift en las predicciones comparado con baseline.
+    
+    Args:
+        threshold: Número de desviaciones estándar para detectar drift (default: 2.0)
+        
+    Returns:
+        - drift_detected: Si se detectó drift
+        - drift_score: Puntuación de drift
+        - current_mean: Media actual de predicciones
+        - baseline_mean: Media baseline
+        
+    Nota: Se debe configurar baseline primero con POST /monitoring/baseline
+    """
+    if model is None:
+        raise HTTPException(status_code=503, detail="Model not loaded")
+    
+    drift_info = monitor.detect_drift(threshold=threshold)
+    
+    return {
+        **drift_info,
+        "threshold": threshold,
+        "recommendation": "Configure baseline with POST /monitoring/baseline" if not drift_info["baseline_configured"] else None
+    }
+
+
+@app.post("/monitoring/baseline", tags=["Monitoring"])
+async def set_monitoring_baseline():
+    """
+    Establece el baseline actual para detección de drift.
+    
+    Usa las predicciones actuales en el monitor como baseline.
+    Útil después de validar que el modelo está funcionando correctamente.
+    """
+    if model is None:
+        raise HTTPException(status_code=503, detail="Model not loaded")
+    
+    if not monitor.predictions:
+        raise HTTPException(status_code=400, detail="No predictions available to set baseline")
+    
+    # Set baseline from current predictions
+    predictions_list = list(monitor.predictions)
+    
+    # Extract features if available
+    features_dict = {}
+    if monitor.features_log:
+        for feature_name in ALL_FEATURES_ORDERED:
+            values = [f.get(feature_name) for f in monitor.features_log if feature_name in f]
+            if values:
+                features_dict[feature_name] = values
+    
+    monitor.set_baseline(predictions_list, features_dict if features_dict else None)
+    
+    return {
+        "message": "Baseline configured successfully",
+        "baseline_predictions": len(predictions_list),
+        "baseline_mean": monitor.baseline_mean,
+        "baseline_std": monitor.baseline_std,
+        "features_tracked": len(features_dict)
+    }
+
+
+@app.get("/monitoring/features", tags=["Monitoring"])
+async def get_feature_statistics():
+    """
+    Obtiene estadísticas de las features usadas en predicciones recientes.
+    
+    Incluye drift detection por feature si hay baseline configurado.
+    """
+    if model is None:
+        raise HTTPException(status_code=503, detail="Model not loaded")
+    
+    feature_stats = monitor.get_feature_stats()
+    
+    return {
+        "features_tracked": len(feature_stats),
+        "statistics": feature_stats,
+        "baseline_configured": monitor.baseline_features is not None
+    }
+
+
+def _generate_feature_rows(feature_stats: Dict) -> str:
+    """Helper function to generate feature statistics table rows."""
+    if not feature_stats:
+        return ""
+    
+    rows = []
+    for name, stats in feature_stats.items():
+        drift_badge = "-"
+        if stats.get("drift_detected"):
+            drift_score = stats.get("drift_score", 0)
+            drift_badge = f'<span class="badge badge-danger">DRIFT {drift_score:.2f}</span>'
+        elif "drift_score" in stats:
+            drift_badge = '<span class="badge badge-success">OK</span>'
+        
+        row = f'''
+        <tr>
+            <td><strong>{name}</strong></td>
+            <td>{stats.get("mean", 0):.3f}</td>
+            <td>{stats.get("std", 0):.3f}</td>
+            <td>{stats.get("min", 0):.3f}</td>
+            <td>{stats.get("max", 0):.3f}</td>
+            <td>{drift_badge}</td>
+        </tr>
+        '''
+        rows.append(row)
+    
+    return "".join(rows)
+
+
+@app.get("/monitoring/dashboard", response_class=HTMLResponse, tags=["Monitoring"])
+async def monitoring_dashboard():
+    """
+    Dashboard HTML de monitoreo con visualización de métricas.
+    """
+    if model is None:
+        return HTMLResponse(content="<h1>Model not loaded</h1>", status_code=503)
+    
+    metrics = monitor.get_metrics()
+    drift_info = monitor.detect_drift()
+    feature_stats = monitor.get_feature_stats()
+    
+    # Build HTML
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Model Monitoring Dashboard</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                margin: 0;
+                padding: 20px;
+                background: #f5f5f5;
+            }}
+            .container {{
+                max-width: 1200px;
+                margin: 0 auto;
+            }}
+            h1 {{
+                color: #333;
+                border-bottom: 3px solid #4CAF50;
+                padding-bottom: 10px;
+            }}
+            .metric-grid {{
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 20px;
+                margin: 20px 0;
+            }}
+            .metric-card {{
+                background: white;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }}
+            .metric-card h3 {{
+                margin: 0 0 10px 0;
+                color: #666;
+                font-size: 14px;
+                text-transform: uppercase;
+            }}
+            .metric-value {{
+                font-size: 32px;
+                font-weight: bold;
+                color: #4CAF50;
+            }}
+            .metric-label {{
+                font-size: 12px;
+                color: #999;
+                margin-top: 5px;
+            }}
+            .alert {{
+                padding: 15px;
+                border-radius: 8px;
+                margin: 20px 0;
+            }}
+            .alert-success {{
+                background: #d4edda;
+                border-left: 4px solid #28a745;
+                color: #155724;
+            }}
+            .alert-warning {{
+                background: #fff3cd;
+                border-left: 4px solid #ffc107;
+                color: #856404;
+            }}
+            .alert-danger {{
+                background: #f8d7da;
+                border-left: 4px solid #dc3545;
+                color: #721c24;
+            }}
+            table {{
+                width: 100%;
+                border-collapse: collapse;
+                background: white;
+                border-radius: 8px;
+                overflow: hidden;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }}
+            th, td {{
+                padding: 12px;
+                text-align: left;
+                border-bottom: 1px solid #ddd;
+            }}
+            th {{
+                background: #4CAF50;
+                color: white;
+                font-weight: 600;
+            }}
+            tr:hover {{
+                background: #f5f5f5;
+            }}
+            .badge {{
+                display: inline-block;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                font-weight: bold;
+            }}
+            .badge-success {{
+                background: #28a745;
+                color: white;
+            }}
+            .badge-danger {{
+                background: #dc3545;
+                color: white;
+            }}
+            .refresh-button {{
+                background: #4CAF50;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+            }}
+            .refresh-button:hover {{
+                background: #45a049;
+            }}
+        </style>
+        <script>
+            function refreshPage() {{
+                location.reload();
+            }}
+            // Auto-refresh every 30 seconds
+            setTimeout(refreshPage, 30000);
+        </script>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🔍 Model Monitoring Dashboard</h1>
+            
+            <p style="color: #666;">
+                <strong>Model:</strong> {model_info.get('model_name', 'N/A')} v{model_info.get('model_version', 'N/A')} 
+                | <strong>Stage:</strong> {model_info.get('model_stage', 'N/A')}
+                | <button class="refresh-button" onclick="refreshPage()">🔄 Refresh</button>
+            </p>
+            
+            <!-- Drift Alert -->
+            {f'''
+            <div class="alert alert-danger">
+                <strong>⚠️ Drift Detected!</strong><br>
+                Drift score: {drift_info.get('drift_score', 0):.2f} (threshold: 2.0)<br>
+                Current mean: {drift_info.get('current_mean', 0):.2f} | Baseline mean: {drift_info.get('baseline_mean', 0):.2f}
+            </div>
+            ''' if drift_info.get('drift_detected') else ''}
+            
+            {f'''
+            <div class="alert alert-warning">
+                <strong>ℹ️ Baseline Not Configured</strong><br>
+                Configure baseline for drift detection: <code>POST /monitoring/baseline</code>
+            </div>
+            ''' if not drift_info.get('baseline_configured') else ''}
+            
+            <!-- Metrics Grid -->
+            <div class="metric-grid">
+                <div class="metric-card">
+                    <h3>Total Predictions</h3>
+                    <div class="metric-value">{metrics.get('total_predictions', 0):,}</div>
+                    <div class="metric-label">Since startup</div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3>Uptime</h3>
+                    <div class="metric-value">{metrics.get('uptime_hours', 0):.1f}h</div>
+                    <div class="metric-label">{metrics.get('predictions_per_hour', 0):.1f} pred/hour</div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3>Avg Prediction</h3>
+                    <div class="metric-value">${metrics.get('avg_prediction', 0):.1f}k</div>
+                    <div class="metric-label">Median: ${metrics.get('median_prediction', 0):.1f}k</div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3>Prediction Range</h3>
+                    <div class="metric-value">${metrics.get('min_prediction', 0):.1f}k - ${metrics.get('max_prediction', 0):.1f}k</div>
+                    <div class="metric-label">Min - Max</div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3>Avg Inference Time</h3>
+                    <div class="metric-value">{metrics.get('avg_inference_time_ms', 0):.1f}ms</div>
+                    <div class="metric-label">P95: {metrics.get('p95_inference_time_ms', 0):.1f}ms</div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3>Std Deviation</h3>
+                    <div class="metric-value">${metrics.get('std_prediction', 0):.1f}k</div>
+                    <div class="metric-label">Prediction spread</div>
+                </div>
+            </div>
+            
+            <!-- Feature Statistics -->
+            {f'''
+            <h2 style="margin-top: 40px;">📊 Feature Statistics</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th>Mean</th>
+                        <th>Std</th>
+                        <th>Min</th>
+                        <th>Max</th>
+                        <th>Drift</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {_generate_feature_rows(feature_stats)}
+                </tbody>
+            </table>
+            ''' if feature_stats else '<p style="color: #999;">No feature statistics available yet.</p>'}
+            
+            <p style="margin-top: 40px; color: #999; font-size: 12px;">
+                Auto-refreshes every 30 seconds | Last update: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+            </p>
+        </div>
+    </body>
+    </html>
+    """
+    
+    return HTMLResponse(content=html_content)
 
 
 @app.post("/admin/reload", tags=["Admin"])
 async def reload_model():
     """
-    Recarga el modelo desde models/production_model.pkl sin reiniciar la API.
+    Recarga el modelo desde models/production/latest/ sin reiniciar la API.
     Útil después de entrenar y registrar un nuevo modelo.
     """
     global model, scaler, model_info, model_metrics, SELECTED_FEATURES
@@ -1009,6 +1565,76 @@ async def demo_page():
     """
     
     return HTMLResponse(content=html_content)
+
+
+# ============================================================================
+# EDA Endpoints
+# ============================================================================
+
+@app.get("/eda/data", tags=["EDA"])
+async def get_eda_data():
+    """
+    Obtiene los datos del EDA en formato JSON.
+    Busca primero el archivo con timestamp, luego el genérico.
+    """
+    import glob
+    
+    reports_dir = Path(__file__).parent.parent / "data" / "reports"
+    
+    # Buscar archivos eda_data con timestamp (más reciente primero)
+    json_files = sorted(glob.glob(str(reports_dir / "eda_data_*.json")), reverse=True)
+    
+    # Si no hay con timestamp, buscar el genérico
+    if not json_files:
+        json_files = [str(reports_dir / "eda_data.json")]
+    
+    for json_file in json_files:
+        if Path(json_file).exists():
+            try:
+                with open(json_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                return data
+            except Exception as e:
+                logger.error(f"Error loading {json_file}: {e}")
+                continue
+    
+    raise HTTPException(
+        status_code=404,
+        detail="EDA data not found. Run data_ingestion.py first."
+    )
+
+
+@app.get("/eda/report", response_class=HTMLResponse, tags=["EDA"])
+async def get_eda_report():
+    """
+    Obtiene el reporte HTML del EDA.
+    Busca primero el archivo con timestamp, luego el genérico.
+    """
+    import glob
+    
+    reports_dir = Path(__file__).parent.parent / "data" / "reports"
+    
+    # Buscar archivos raw_eda_report con timestamp (más reciente primero)
+    html_files = sorted(glob.glob(str(reports_dir / "raw_eda_report_*.html")), reverse=True)
+    
+    # Si no hay con timestamp, buscar el genérico
+    if not html_files:
+        html_files = [str(reports_dir / "raw_eda_report.html")]
+    
+    for html_file in html_files:
+        if Path(html_file).exists():
+            try:
+                with open(html_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                return HTMLResponse(content=content)
+            except Exception as e:
+                logger.error(f"Error loading {html_file}: {e}")
+                continue
+    
+    raise HTTPException(
+        status_code=404,
+        detail="EDA report not found. Run data_ingestion.py first."
+    )
 
 
 if __name__ == "__main__":
