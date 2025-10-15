@@ -22,10 +22,24 @@ import HousingMonitoring from "./pages/HousingMonitoring";
 import HousingEDA from "./pages/HousingEDA";
 import HousingMLflow from "./pages/HousingMLflow";
 import HousingCode from "./pages/HousingCode";
+import HousingActions from "./pages/HousingActions";
+import HousingPipelineVisual from "./pages/HousingPipelineVisual";
+import NewProject from "./pages/NewProject";
 
 const queryClient = new QueryClient();
 
-const Layout = ({ children }: { children: React.ReactNode }) => (
+// Layout sin sidebar (para inicio y páginas generales)
+const SimpleLayout = ({ children }: { children: React.ReactNode }) => (
+  <div className="min-h-screen bg-background">
+    <Navbar />
+    <main className="flex-1">
+      {children}
+    </main>
+  </div>
+);
+
+// Layout con sidebar (para proyectos)
+const ProjectLayout = ({ children }: { children: React.ReactNode }) => (
   <div className="min-h-screen bg-background">
     <Navbar />
     <div className="flex">
@@ -43,22 +57,25 @@ const App = () => (
     <Sonner />
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Layout><Index /></Layout>} />
-        <Route path="/projects" element={<Layout><Project /></Layout>} />
-        <Route path="/models" element={<Layout><Models /></Layout>} />
-        <Route path="/pipelines" element={<Layout><Pipelines /></Layout>} />
-        <Route path="/runs" element={<Layout><Runs /></Layout>} />
-        <Route path="/artifacts" element={<Layout><Artifacts /></Layout>} />
+        {/* Páginas sin sidebar */}
+        <Route path="/" element={<SimpleLayout><Index /></SimpleLayout>} />
+        <Route path="/new-project" element={<SimpleLayout><NewProject /></SimpleLayout>} />
+        <Route path="/projects" element={<SimpleLayout><Project /></SimpleLayout>} />
+        <Route path="/models" element={<SimpleLayout><Models /></SimpleLayout>} />
+        <Route path="/pipelines" element={<SimpleLayout><Pipelines /></SimpleLayout>} />
+        <Route path="/runs" element={<SimpleLayout><Runs /></SimpleLayout>} />
+        <Route path="/artifacts" element={<SimpleLayout><Artifacts /></SimpleLayout>} />
         
-        {/* Housing Price Prediction Project Routes */}
-        <Route path="/housing" element={<Layout><HousingProject /></Layout>} />
-        <Route path="/housing/code" element={<Layout><HousingCode /></Layout>} />
-        <Route path="/housing/api-demo" element={<Layout><HousingAPIDemo /></Layout>} />
-        <Route path="/housing/pipeline" element={<Layout><HousingPipeline /></Layout>} />
-        <Route path="/housing/experiments" element={<Layout><HousingExperiments /></Layout>} />
-        <Route path="/housing/monitoring" element={<Layout><HousingMonitoring /></Layout>} />
-        <Route path="/housing/eda" element={<Layout><HousingEDA /></Layout>} />
-        <Route path="/housing/mlflow" element={<Layout><HousingMLflow /></Layout>} />
+        {/* Housing Price Prediction Project Routes - CON SIDEBAR */}
+        <Route path="/housing" element={<ProjectLayout><HousingProject /></ProjectLayout>} />
+        <Route path="/housing/code" element={<ProjectLayout><HousingCode /></ProjectLayout>} />
+        <Route path="/housing/api-demo" element={<ProjectLayout><HousingAPIDemo /></ProjectLayout>} />
+        <Route path="/housing/pipeline" element={<ProjectLayout><HousingPipelineVisual /></ProjectLayout>} />
+        <Route path="/housing/actions" element={<ProjectLayout><HousingActions /></ProjectLayout>} />
+        <Route path="/housing/experiments" element={<ProjectLayout><HousingExperiments /></ProjectLayout>} />
+        <Route path="/housing/monitoring" element={<ProjectLayout><HousingMonitoring /></ProjectLayout>} />
+        <Route path="/housing/eda" element={<ProjectLayout><HousingEDA /></ProjectLayout>} />
+        <Route path="/housing/mlflow" element={<ProjectLayout><HousingMLflow /></ProjectLayout>} />
         
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />

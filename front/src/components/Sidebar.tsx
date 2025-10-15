@@ -28,21 +28,21 @@ const Sidebar = () => {
   return (
     <aside className="w-64 border-r border-border bg-sidebar h-screen sticky top-0 pt-16 overflow-y-auto">
       <div className="p-4 space-y-4">
-        {/* Main Navigation - Always visible */}
-        <nav className="space-y-1">
-          <Button
-            variant="ghost"
-            className={`w-full justify-start ${
-              isActive('/') ? "bg-card text-foreground font-medium" : "text-sidebar-foreground hover:bg-card/50 hover:text-foreground"
-            }`}
-            asChild
-          >
-            <Link to="/">
-              <Home className="w-4 h-4 mr-3" />
-              Inicio
-            </Link>
-          </Button>
-        </nav>
+        {/* Botón Volver al Inicio - Solo visible en proyectos */}
+        {isInHousingProject && (
+          <nav className="space-y-1">
+            <Button
+              variant="outline"
+              className="w-full justify-start border-primary/50 text-primary hover:bg-primary/10"
+              asChild
+            >
+              <Link to="/">
+                <Home className="w-4 h-4 mr-3" />
+                Volver al Inicio
+              </Link>
+            </Button>
+          </nav>
+        )}
 
         {/* Housing Project Section - Only show when in project */}
         {isInHousingProject && (
@@ -146,6 +146,19 @@ const Sidebar = () => {
                     <Link to="/housing/pipeline">
                       <GitBranch className="w-3 h-3 mr-2" />
                       Pipeline DVC
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`w-full justify-start pl-6 ${
+                      isActive('/housing/actions') ? "bg-card text-foreground font-medium" : "text-sidebar-foreground hover:bg-card/50 hover:text-foreground"
+                    }`}
+                    asChild
+                  >
+                    <Link to="/housing/actions">
+                      <Activity className="w-3 h-3 mr-2" />
+                      GitHub Actions
                     </Link>
                   </Button>
                 </nav>
