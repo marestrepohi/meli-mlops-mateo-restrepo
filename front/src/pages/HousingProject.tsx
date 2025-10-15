@@ -101,10 +101,36 @@ export default function HousingProject() {
       {/* Project Overview */}
       <Card>
         <CardHeader>
-          <CardTitle>Sobre el Proyecto</CardTitle>
-          <CardDescription>
-            Solución MLOps completa para predicción de precios de viviendas
-          </CardDescription>
+          <div className="flex items-start justify-between">
+            <div>
+              <CardTitle>Sobre el Proyecto</CardTitle>
+              <CardDescription>
+                Solución MLOps completa para predicción de precios de viviendas
+              </CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <a
+                href="https://github.com/marestrepohi/meli-mlops-mateo-restrepo/blob/main/README.md"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Database className="h-4 w-4" />
+                  README
+                </Button>
+              </a>
+              <a
+                href="https://github.com/marestrepohi/meli-mlops-mateo-restrepo"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button variant="outline" size="sm" className="gap-2">
+                  <ExternalLink className="h-4 w-4" />
+                  GitHub
+                </Button>
+              </a>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

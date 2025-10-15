@@ -1137,8 +1137,6 @@ export default function HousingEDA() {
             </CardContent>
           </Card>
         </TabsContent>
-
-        {/* Statistics Tab */}
       </Tabs>
     </div>
   );

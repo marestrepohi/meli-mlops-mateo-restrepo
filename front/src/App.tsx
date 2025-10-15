@@ -21,6 +21,7 @@ import HousingExperiments from "./pages/HousingExperiments";
 import HousingMonitoring from "./pages/HousingMonitoring";
 import HousingEDA from "./pages/HousingEDA";
 import HousingMLflow from "./pages/HousingMLflow";
+import HousingCode from "./pages/HousingCode";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +52,7 @@ const App = () => (
         
         {/* Housing Price Prediction Project Routes */}
         <Route path="/housing" element={<Layout><HousingProject /></Layout>} />
+        <Route path="/housing/code" element={<Layout><HousingCode /></Layout>} />
         <Route path="/housing/api-demo" element={<Layout><HousingAPIDemo /></Layout>} />
         <Route path="/housing/pipeline" element={<Layout><HousingPipeline /></Layout>} />
         <Route path="/housing/experiments" element={<Layout><HousingExperiments /></Layout>} />

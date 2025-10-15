@@ -10,7 +10,8 @@ import {
   Layers,
   Database,
   FileText,
-  TrendingUp
+  TrendingUp,
+  Code2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "react-router-dom";
@@ -85,6 +86,19 @@ const Sidebar = () => {
                   Modelos
                 </h4>
                 <nav className="space-y-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`w-full justify-start pl-6 ${
+                      isActive('/housing/code') ? "bg-card text-foreground font-medium" : "text-sidebar-foreground hover:bg-card/50 hover:text-foreground"
+                    }`}
+                    asChild
+                  >
+                    <Link to="/housing/code">
+                      <Code2 className="w-3 h-3 mr-2" />
+                      Código
+                    </Link>
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
