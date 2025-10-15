@@ -1,418 +1,261 @@
-# 🏠 Housing Price Prediction - MLOps Project
+# 🏠 Housing Price Prediction - MLOps Production System
 
 [![ML Pipeline CI/CD](https://github.com/marestrepohi/meli-mlops-mateo-restrepo/actions/workflows/ml-pipeline.yml/badge.svg)](https://github.com/marestrepohi/meli-mlops-mateo-restrepo/actions/workflows/ml-pipeline.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
 [![MLflow](https://img.shields.io/badge/MLflow-2.8+-orange.svg)](https://mlflow.org/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Un sistema completo de MLOps para predecir precios de viviendas utilizando el dataset Boston Housing. Incluye pipeline de entrenamiento reproducible, API REST, monitoreo, containerización con Docker y CI/CD con GitHub Actions.
+> Sistema completo y producción-ready de MLOps para predicción de precios de viviendas. Implementación agnóstica a la nube con tecnologías open-source, pipeline reproducible, API REST, monitoreo continuo y CI/CD automatizado.
 
-## 📑 Tabla de Contenidos
+---
 
-- [Características](#-características)
-- [Arquitectura](#-arquitectura)
-- [Inicio Rápido](#-inicio-rápido)
-- [Estructura del Proyecto](#-estructura-del-proyecto)
-- [Pipeline de Entrenamiento](#-pipeline-de-entrenamiento)
-- [API REST](#-api-rest)
-- [Monitoreo](#-monitoreo)
-- [Despliegue](#-despliegue)
-- [Decisiones Técnicas](#-decisiones-técnicas)
-- [Mejoras Futuras](#-mejoras-futuras)
-- [Uso de Herramientas AI](#-uso-de-herramientas-ai)
+## 📋 Descripción del Proyecto
 
-## ✨ Características
+Este proyecto implementa una solución end-to-end de Machine Learning Operations (MLOps) para **predecir precios de viviendas** utilizando el dataset Boston Housing. El sistema está diseñado siguiendo las mejores prácticas de la industria y es completamente **agnóstico a proveedores cloud**, utilizando únicamente herramientas open-source y self-hosted.
 
-### 🎯 Funcionalidades Core
-- **Pipeline de ML Reproducible**: Entrenamiento automatizado con versionado completo
-- **Configuración Centralizada**: `params.yaml` para hiperparámetros y configuraciones
-- **API REST**: Endpoints para predicciones individuales y en batch
-- **Tracking con MLflow**: Seguimiento de experimentos, métricas y artefactos visuales
-- **Artefactos de Evaluación**: Plots automáticos (residuals, feature importance, predictions)
-- **Frontend Interactivo**: 6 páginas con visualizaciones completas de todos los procesos MLOps
-- **Análisis EDA**: Estadísticas, distribuciones, correlaciones y feature importance
-- **Data Lineage**: Seguimiento de versiones y comparación de datasets
-- **Drift Detection**: Monitoreo estadístico (KS test) con alertas y severidad
-- **Datos Sintéticos**: Generador de datos con drift configurable para testing
-- **Monitoreo en Producción**: Métricas de performance, latencia y drift detection
-- **Containerización**: Docker y docker-compose para despliegue portable
-- **CI/CD**: Pipeline automatizado con GitHub Actions
-- **Testing**: Suite de tests unitarios e integración
+### 🎯 Objetivos del Sistema
 
-### 🔧 Stack Tecnológico
+1. **Reproducibilidad**: Pipeline completamente versionado y automatizable
+2. **Portabilidad**: Tecnologías open-source, sin dependencias de servicios cloud gestionados
+3. **Monitoreo**: Tracking de performance, latencia y data drift en tiempo real
+4. **Escalabilidad**: Arquitectura containerizada lista para orquestadores (K8s, Docker Swarm)
+5. **Mantenibilidad**: Código modular, documentado y con tests comprehensivos
 
-**Backend:**
-- **ML Framework**: scikit-learn
-- **API**: FastAPI + Uvicorn
-- **Tracking**: MLflow (open-source)
-- **Analytics**: scipy, matplotlib, seaborn
-- **Containerización**: Docker + docker-compose
-- **Testing**: pytest
-- **CI/CD**: GitHub Actions
+---
 
-**Frontend:**
-- **Framework**: React 18 + TypeScript
-- **Build Tool**: Vite
-- **UI**: shadcn/ui + Radix UI + Tailwind CSS
-- **Charts**: Recharts
-- **HTTP Client**: Axios
-- **State**: TanStack Query (React Query)
-- **Routing**: React Router v6
-
-## 🏗 Arquitectura
+## 🏗️ Arquitectura del Sistema
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    GitHub Actions CI/CD                     │
-│              (Testing, Linting, Building, Deploy)           │
-└─────────────────────┬───────────────────────────────────────┘
-                      │
-                      ↓
-┌─────────────────────────────────────────────────────────────┐
-│                   Training Pipeline                         │
-│  ┌────────────┐  ┌────────────┐  ┌──────────┐             │
-│  │   Data     │→ │Preprocess  │→ │  Train   │             │
-│  │  Download  │  │  & Split   │  │ Multiple │             │
-│  └────────────┘  └────────────┘  │  Models  │             │
-│                                   └─────┬────┘             │
-│                                         ↓                   │
-│                  ┌──────────────────────────────────┐      │
-│                  │      MLflow Tracking Server      │      │
-│                  │  • Experiments  • Metrics        │      │
-│                  │  • Parameters   • Artifacts      │      │
-│                  └──────────────────────────────────┘      │
-└─────────────────────────────────────────────────────────────┘
-                                   ↓
-┌─────────────────────────────────────────────────────────────┐
-│                   Production API (FastAPI)                  │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
-│  │  /predict    │  │   /health    │  │   /metrics   │     │
-│  │  /batch      │  │  /model/info │  │ /admin/reload│     │
-│  └──────────────┘  └──────────────┘  └──────────────┘     │
-│                                                             │
-│  ┌──────────────────────────────────────────────────┐     │
-│  │            Model Monitor                         │     │
-│  │  • Latency tracking  • Prediction logging        │     │
-│  │  • Data drift        • Performance metrics       │     │
-│  └──────────────────────────────────────────────────┘     │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                     PIPELINE DE ENTRENAMIENTO                    │
+├─────────────────────────────────────────────────────────────────┤
+│  1. Data Ingestion  →  2. Data Preparation  →  3. Model Train  │
+│     (Kaggle API)        (Clean + Scale)         (XGBoost + MLflow)│
+│         ↓                      ↓                        ↓         │
+│   data/raw/           data/processed/          mlruns/ + models/  │
+└─────────────────────────────────────────────────────────────────┘
+                               ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                    ARTEFACTOS DE PRODUCCIÓN                      │
+├─────────────────────────────────────────────────────────────────┤
+│  models/production/latest/                                       │
+│    ├── model.pkl         (XGBoost model)                        │
+│    ├── scaler.pkl        (StandardScaler)                       │
+│    └── metadata.json     (Features, metrics, run_id)            │
+└─────────────────────────────────────────────────────────────────┘
+                               ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                        API REST (FastAPI)                        │
+├─────────────────────────────────────────────────────────────────┤
+│  Endpoints:                                                      │
+│    • POST /predict          (Individual prediction)             │
+│    • POST /predict/batch    (Batch predictions)                 │
+│    • GET  /health           (Health check)                      │
+│    • GET  /metrics          (Performance metrics)               │
+│    • GET  /drift            (Data drift detection)              │
+└─────────────────────────────────────────────────────────────────┘
+                               ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                    MONITOREO Y OBSERVABILIDAD                    │
+├─────────────────────────────────────────────────────────────────┤
+│  • Prediction logging                                            │
+│  • Latency tracking (p50, p95, p99)                             │
+│  • Data drift detection (statistical tests)                     │
+│  • Model performance monitoring                                  │
+└─────────────────────────────────────────────────────────────────┘
 ```
+
+---
 
 ## 🚀 Inicio Rápido
 
-### Pre-requisitos
+### Prerequisitos
 
 - Python 3.10+
-- Credenciales de Kaggle (para descargar dataset)
+- Docker & Docker Compose (opcional pero recomendado)
+- Git
+- Make (opcional, para usar Makefile)
 
-### Opción 1: Desarrollo Local
+### Opción 1: Setup Automático (Recomendado)
+
+```bash
+# Clonar repositorio
+git clone https://github.com/marestrepohi/meli-mlops-mateo-restrepo.git
+cd meli-mlops-mateo-restrepo
+
+# Ejecutar setup automático
+bash setup.sh
+
+# O usando Make
+make setup
+```
+
+### Opción 2: Setup Manual
 
 ```bash
 # 1. Crear entorno virtual
-python3 -m venv venv
-source venv/bin/activate  # En Windows: venv\Scripts\activate
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# o
+venv\Scripts\activate     # Windows
 
 # 2. Instalar dependencias
-pip install --upgrade pip
 pip install -r requirements.txt
-pip install -e .
 
-# 3. Configurar credenciales de Kaggle
-cp .env.example .env
-# Editar .env y agregar tus credenciales:
-# KAGGLE_USERNAME=tu_usuario
-# KAGGLE_KEY=tu_api_key
-
-# 4. Crear directorios necesarios
-mkdir -p data/{raw,processed,reports} models logs
-
-# 5. Ejecutar pipeline de entrenamiento con DVC
+# 3. Ejecutar pipeline de entrenamiento
 dvc repro
 
-# 6. Iniciar MLflow UI (en otra terminal)
-mlflow ui --host 0.0.0.0 --port 5000
+# 4. Iniciar API
+uvicorn api.main:app --reload --port 8000
 
-# 7. Iniciar API
-python src/main.py
-# O con uvicorn:
-uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
-
-# Acceder a:
-# - API Docs: http://localhost:8000/docs
-# - MLflow UI: http://localhost:5000
+# 5. (Opcional) Ver experimentos en MLflow UI
+mlflow ui --port 5000
 ```
 
-### Opción 2: Docker (Recomendado para producción)
+### Opción 3: Docker (Producción)
 
 ```bash
-# Construir y levantar servicios
-docker-compose up --build
+# Iniciar todo el stack (API + MLflow UI)
+docker-compose up -d
 
-# Acceder a:
-# - API: http://localhost:8000/docs
-# - MLflow: http://localhost:5000
-
-# Detener servicios
-docker-compose down
-```
-
-### 📝 Probar la API
-
-```bash
-# Health check
+# Verificar que está corriendo
 curl http://localhost:8000/health
-
-# Predicción individual
-curl -X POST "http://localhost:8000/predict" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "CRIM": 0.00632,
-    "ZN": 18.0,
-    "INDUS": 2.31,
-    "CHAS": 0.0,
-    "NOX": 0.538,
-    "RM": 6.575,
-    "AGE": 65.2,
-    "DIS": 4.0900,
-    "RAD": 1.0,
-    "TAX": 296.0,
-    "PTRATIO": 15.3,
-    "B": 396.90,
-    "LSTAT": 4.98
-  }'
-
-# Métricas
-curl http://localhost:8000/metrics
-
-# También puedes usar Swagger UI: http://localhost:8000/docs
 ```
 
-## 🔄 Pipeline de Entrenamiento con DVC
+---
 
-### Ejecutar Pipeline Completo
-
-```bash
-# Ejecutar todas las etapas del pipeline
-dvc repro
-
-# Ver estado del pipeline
-dvc status
-
-# Ver métricas
-dvc metrics show
-
-# Ver DAG del pipeline
-dvc dag
-
-# Comparar experimentos
-dvc metrics diff
-```
-
-### Ejecutar Etapas Individuales
-
-```bash
-# Solo descarga de datos
-dvc repro data_ingestion
-
-# Solo preprocesamiento
-dvc repro preprocess
-
-# Solo entrenamiento baseline
-dvc repro train_baseline
-
-# Solo modelo final
-dvc repro train_final
-```
-
-### Ver Resultados en MLflow
-
-```bash
-# Iniciar MLflow UI
-mlflow ui --host 0.0.0.0 --port 5000
-
-# Acceder a: http://localhost:5000
-# Aquí puedes:
-# - Comparar experimentos
-# - Ver métricas (RMSE, MAE, R²)
-# - Descargar artefactos (plots, modelos)
-# - Revisar hiperparámetros
-```
-
-### Reentrenar con Nuevos Parámetros
-
-```bash
-# 1. Editar params.yaml
-# Ejemplo: Cambiar max_depth de 6 a 10
-nano params.yaml
-
-# 2. Ejecutar pipeline (DVC detecta cambios automáticamente)
-dvc repro
-
-# 3. Ver comparación con experimento anterior
-dvc metrics diff
-mlflow ui  # Comparar visualmente en la UI
-```
-
-## 📁 Estructura del Proyecto
+## 📂 Estructura del Proyecto
 
 ```
-.
-├── src/
-│   ├── config.py              # Configuración centralizada
-│   ├── data_ingestion.py      # Descarga e ingesta de datos (DVC stage 1)
-│   ├── data_preparation.py    # Preprocesamiento y feature engineering
-│   ├── train.py               # Pipeline de entrenamiento XGBoost
-│   ├── evaluate.py            # Evaluación y comparación de modelos
-│   ├── register_model.py      # Registro en MLflow Model Registry
-│   ├── main.py                # API FastAPI
-│   ├── monitoring.py          # Sistema de monitoreo
-│   └── analytics.py           # Endpoints de analytics
-├── data/                      # Datasets (generado por pipeline, en .gitignore)
-│   ├── raw/                   # Datos crudos descargados
-│   ├── processed/             # Datos procesados (train.csv, test.csv)
-│   └── reports/               # Reportes EDA
-├── models/                    # Modelos entrenados (en .gitignore)
-│   ├── xgboost_baseline.pkl
-│   ├── xgboost_tuned.pkl
-│   ├── xgboost_final.pkl
-│   ├── evaluation/            # Reportes de evaluación
-│   └── production/            # Modelo en producción
-├── mlruns/                    # MLflow tracking data (en .gitignore)
-├── logs/                      # Logs de predicciones (en .gitignore)
-├── front/                     # Frontend React (opcional)
-├── notebooks/                 # Jupyter notebooks para exploración
-├── tests/                     # Tests unitarios e integración
-├── .github/workflows/         # CI/CD con GitHub Actions
-├── dvc.yaml                   # Definición del pipeline DVC
-├── params.yaml                # Hiperparámetros y configuración
-├── requirements.txt           # Dependencias Python
-├── docker-compose.yml         # Orquestación de servicios
-├── Dockerfile                 # Imagen Docker para la API
-└── README.md                  # Este archivo
+meli-mlops-mateo-restrepo/
+├── api/                          # API REST
+│   ├── main.py                   # FastAPI application
+│   ├── monitoring.py             # Monitoring & drift detection
+│   └── security.py               # Authentication & rate limiting
+│
+├── src/                          # Pipeline de ML
+│   ├── data_ingestion.py         # Descarga de datos (Kaggle)
+│   ├── data_preparation.py       # Limpieza, split, scaling
+│   ├── model_train.py            # Entrenamiento (3 experimentos XGBoost)
+│   ├── model_register.py         # MLflow Model Registry (opcional)
+│   └── config.py                 # Configuración centralizada
+│
+├── tests/                        # Tests comprehensivos
+│   ├── test_api.py               # Tests de API (endpoints, security)
+│   ├── test_pipeline.py          # Tests de pipeline (data, training)
+│   ├── test_model.py             # Tests de modelo (quality, performance)
+│   └── conftest.py               # Fixtures de pytest
+│
+├── data/                         # Datos versionados con DVC
+│   ├── raw/                      # Datos originales
+│   ├── processed/                # Datos preprocesados
+│   ├── predictions/              # Predicciones guardadas
+│   └── reports/                  # Reportes EDA
+│
+├── models/                       # Modelos en producción
+│   └── production/latest/        # Último modelo productizado
+│       ├── model.pkl
+│       ├── scaler.pkl
+│       └── metadata.json
+│
+├── mlruns/                       # MLflow tracking (local)
+│   └── <experiment_id>/          # Experimentos, runs, artifacts
+│
+├── .github/workflows/            # CI/CD con GitHub Actions
+│   ├── ml-pipeline.yml           # Pipeline principal (train + test + deploy)
+│   ├── api-tests.yml             # Tests de API
+│   └── scheduled-retrain.yml     # Reentrenamiento automático semanal
+│
+├── dvc.yaml                      # Pipeline DVC (reproducibilidad)
+├── params.yaml                   # Hiperparámetros y configuración
+├── docker-compose.yml            # Orquestación de servicios
+├── Dockerfile                    # Imagen Docker para API
+├── Makefile                      # Comandos de desarrollo
+├── requirements.txt              # Dependencias Python
+└── README.md                     # Este archivo
 ```
+
+---
 
 ## 🔬 Pipeline de Entrenamiento
 
-### Etapas del Pipeline DVC
+El pipeline está implementado con **DVC** para reproducibilidad completa:
 
-El pipeline está definido en `dvc.yaml` y consta de 8 etapas:
+### Etapa 1: Data Ingestion (`src/data_ingestion.py`)
 
-1. **data_ingestion**: Descarga dataset desde Kaggle
-2. **preprocess**: Limpieza, transformación y split train/test
-3. **train_baseline**: XGBoost baseline con todas las features
-4. **train_tuned**: Hyperparameter tuning con GridSearchCV
-5. **feature_selection**: Selección de top features por importancia
-6. **train_final**: Modelo final con features seleccionadas
-7. **evaluate**: Comparación de todos los modelos
-8. **register_model**: Registro del mejor modelo en MLflow
+- Descarga dataset Boston Housing desde Kaggle
+- Genera reporte EDA automático con `ydata-profiling`
+- Output: `data/raw/HousingData.csv`
 
-### Componentes
+### Etapa 2: Data Preparation (`src/data_preparation.py`)
 
-**Data Ingestion** (`data_ingestion.py`)
-- Descarga automática desde Kaggle usando API oficial
-- Validación de datos (missing values, tipos, estadísticas)
-- Generación de reporte EDA con `ydata-profiling`
-- Configuración de credenciales desde .env
+- **Limpieza**: Manejo de valores nulos (mediana/moda)
+- **Split**: Train/Test (80/20) con seed fijo
+- **Scaling**: StandardScaler (importante: guarda scaler puro, no dict)
+- **Outputs**: 
+  - `data/processed/{train,test,X_train,X_test,y_train,y_test}.csv`
+  - `models/production/latest/scaler.pkl` (para API)
 
-**Preprocessing** (`data_preparation.py`)
-- Limpieza de datos (missing values, duplicados)
-- Identificación automática de features y target
-- Split train/test configurable desde `params.yaml`
-- Standardización con `StandardScaler`
-- Persistencia del preprocessor para inferencia
+### Etapa 3: Model Training (`src/model_train.py`)
 
-**Training** (`train.py`)
-- Múltiples estrategias de XGBoost:
-  - Baseline con todas las features
-  - Hyperparameter tuning con GridSearchCV
-  - Feature selection por importancia
-  - Modelo final optimizado
-- Tracking automático con MLflow:
-  - Parámetros (todos los hiperparámetros)
-  - Métricas (RMSE, MAE, R², MSE)
-  - Artefactos (plots de evaluación, modelo, preprocessor)
-- Generación de plots automáticos:
-  - Predictions vs Actual
-  - Residuals plot
-  - Residuals distribution
-  - Feature importance (top 15)
+**3 Experimentos XGBoost con MLflow Autologging:**
 
-**Evaluation** (`evaluate.py`)
-- Comparación de todos los modelos entrenados
-- Generación de reportes HTML
-- Métricas detalladas para cada modelo
+1. **Hyperparameter Tuning** (todas las features)
+   - RandomizedSearchCV con 50 iteraciones
+   - 5-fold cross-validation
+   
+2. **Important Features** (selección con SHAP)
+   - Selecciona top features (percentil 20)
+   - Hyperparámetros default
+   
+3. **Tuning on Selected Features**
+   - RandomizedSearchCV en features seleccionadas
+   - Mejor balance performance/complejidad
 
-**Model Registration** (`register_model.py`)
-- Registro del mejor modelo en MLflow Model Registry
-- Versionado automático
-- Metadatos del modelo
+**Artifacts generados automáticamente:**
+- Feature importance (weight, gain, cover)
+- SHAP values y plots
+- Residuals plot
+- Predictions vs Actuals
+- Model signature (MLflow)
 
-### Métricas Evaluadas
+**Output:** Mejor modelo exportado a `models/production/latest/`
 
-- **RMSE**: Root Mean Squared Error (penaliza outliers)
-- **MAE**: Mean Absolute Error (interpretable en unidades originales)
-- **R²**: Coeficiente de determinación (0-1, mayor es mejor)
-- **MSE**: Mean Squared Error
+### Ejecución del Pipeline
 
-### Reproducibilidad
+```bash
+# Ejecutar pipeline completo
+dvc repro
 
-- Seeds fijos (`random_state=42`)
-- Versionado de código con Git
-- Versionado de datos con DVC
-- Tracking completo con MLflow
-- Configuración centralizada en `params.yaml`
+# Ejecutar stages específicos
+dvc repro data_preparation
+dvc repro model_train
 
-### Configuración con params.yaml
-
-El archivo `params.yaml` centraliza todos los hiperparámetros y configuraciones:
-
-```yaml
-# Ejemplo: Configurar XGBoost baseline
-model_building:
-  xgboost_baseline:
-    n_estimators: 100
-    max_depth: 6
-    learning_rate: 0.1
-    subsample: 0.8
-    colsample_bytree: 0.8
-
-# Configurar preprocessing
-preprocessing:
-  scaling_method: "standard"
-  handle_missing: "drop"
-  remove_duplicates: true
-
-# Configurar data split
-data_ingestion:
-  test_size: 0.2
-  random_state: 42
-  shuffle: true
+# Ver DAG del pipeline
+dvc dag
 ```
 
-**Beneficios:**
-- ✅ Experimentación sin modificar código
-- ✅ Versionado de configuraciones con Git
-- ✅ Tracking automático en MLflow
-- ✅ Colaboración simplificada
+---
 
 ## 🌐 API REST
 
+FastAPI-based REST API con validación automática, documentación Swagger y monitoreo.
+
 ### Endpoints Principales
 
-#### `POST /predict`
-Predicción individual de precio de vivienda.
+#### `POST /predict` - Predicción Individual
+
+Realiza predicción para una vivienda.
 
 **Request:**
 ```json
 {
   "CRIM": 0.00632,
-  "ZN": 18.0,
-  "INDUS": 2.31,
-  "CHAS": 0.0,
   "NOX": 0.538,
   "RM": 6.575,
   "AGE": 65.2,
-  "DIS": 4.0900,
+  "DIS": 4.09,
   "RAD": 1.0,
   "TAX": 296.0,
   "PTRATIO": 15.3,
@@ -424,486 +267,442 @@ Predicción individual de precio de vivienda.
 **Response:**
 ```json
 {
-  "prediction": 30.12,
-  "model_version": "1.0.0",
-  "inference_time": 0.0023
+  "prediction": 24.5,
+  "model_name": "boston_housing_xgboost",
+  "model_version": "1.0",
+  "inference_time": 15.2,
+  "features_used": ["CRIM", "NOX", "RM", ...]
 }
 ```
 
-#### `POST /predict/batch`
-Predicciones en batch para múltiples entradas.
+**Con autenticación (producción):**
+```bash
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: demo-key-123" \
+  -d '{"CRIM": 0.00632, "NOX": 0.538, ...}'
+```
 
-#### `GET /health`
-Health check del servicio.
+#### `POST /predict/batch` - Predicción en Batch
 
-**Response:**
+Múltiples predicciones en una sola request.
+
+**Request:**
 ```json
 {
-  "status": "healthy",
-  "model_loaded": true,
-  "uptime_hours": 2.5,
-  "total_predictions": 157,
-  "warnings": []
+  "instances": [
+    {"CRIM": 0.00632, "NOX": 0.538, ...},
+    {"CRIM": 0.02731, "NOX": 0.469, ...}
+  ]
 }
 ```
 
-#### `GET /metrics`
-Métricas de monitoreo.
+#### `GET /health` - Health Check
 
-**Response:**
-```json
-{
-  "total_predictions": 157,
-  "avg_inference_time": 0.0024,
-  "p95_inference_time": 0.0035,
-  "avg_prediction": 22.5,
-  "std_prediction": 9.2,
-  "uptime_hours": 2.5
-}
-```
+Verificación del estado del servicio y modelos cargados.
 
-#### `GET /model/info`
-Información del modelo en producción.
+#### `GET /metrics` - Métricas de Performance
 
-#### `POST /admin/reload`
-Recargar modelo sin reiniciar el servicio.
+Estadísticas de uso, latencia y predicciones.
+
+#### `GET /drift` - Detección de Data Drift
+
+Compara distribución actual vs baseline para detectar drift.
 
 ### Documentación Interactiva
 
 - **Swagger UI**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
 
+### Seguridad Implementada
+
+1. **API Key Authentication**: Header `X-API-Key`
+2. **Rate Limiting**: 100 requests/min por API key
+3. **Input Validation**: Pydantic schemas con rangos válidos
+4. **CORS**: Configurado para desarrollo (ajustar en producción)
+
+---
+
 ## 📊 Monitoreo
 
-### Sistema de Monitoreo (`monitoring.py`)
+Sistema de monitoreo completo implementado en `api/monitoring.py`:
 
-El sistema incluye monitoreo comprehensivo en producción:
+### Métricas Rastreadas
 
-#### 1. **Métricas de Performance**
-- Latencia de inferencia (avg, p50, p95, p99)
-- Throughput (predicciones/hora)
-- Uptime del servicio
+1. **Performance Metrics**
+   - Total de predicciones
+   - Uptime del servicio
+   - Predicciones por hora
 
-#### 2. **Logging de Predicciones**
-- Todas las predicciones se registran con:
-  - Timestamp
-  - Features de entrada
-  - Predicción
-  - Tiempo de inferencia
-- Guardado periódico en `/logs/`
+2. **Latency Metrics**
+   - Tiempo promedio de inferencia
+   - Percentiles: p50, p95, p99
+   - Tiempo máximo de inferencia
 
-#### 3. **Data Drift Detection**
-- Comparación de estadísticas de features vs baseline
-- Alerta si mean se desvía > 2 std
-- Útil para detectar cambios en distribución de datos
+3. **Prediction Statistics**
+   - Media, mediana, std de predicciones
+   - Min/max values
+   - Distribución de predicciones
 
-#### 4. **Health Checks**
-- Verificación de estado del modelo
-- Detección de anomalías (ej. alta latencia)
-- Status: `healthy`, `degraded`, `warning`
+4. **Data Drift Detection**
+   - Comparación vs baseline (mean ± 2σ)
+   - Drift score por feature
+   - Alertas automáticas
 
-### Ejemplo de Uso
+### Configurar Baseline para Drift Detection
 
 ```python
-from monitoring import monitor
+from api.monitoring import monitor
 
-# El monitor se actualiza automáticamente con cada predicción
-metrics = monitor.get_metrics()
-health = monitor.get_health_status()
-drift = monitor.detect_drift(baseline_stats)
+# Configurar baseline con datos históricos
+historical_predictions = [20.5, 22.3, 19.8, ...]
+historical_features = {
+    'CRIM': [0.1, 0.2, ...],
+    'RM': [6.0, 6.5, ...]
+}
+
+monitor.set_baseline(historical_predictions, historical_features)
 ```
 
-## 🔧 Troubleshooting
+---
 
-### Error: "dvc: command not found"
+## 🐳 Despliegue
+
+### Docker
+
 ```bash
-pip install dvc
+# Build imagen
+docker build -t housing-api:latest .
+
+# Run container
+docker run -p 8000:8000 housing-api:latest
 ```
 
-### Error: "Kaggle credentials not found"
-```bash
-# Crear archivo .env con credenciales
-cp .env.example .env
-# Editar y agregar:
-# KAGGLE_USERNAME=tu_usuario
-# KAGGLE_KEY=tu_api_key
-```
-
-Para obtener tu API key de Kaggle:
-1. Ve a https://www.kaggle.com/settings/account
-2. En "API" section, click "Create New API Token"
-3. Se descargará `kaggle.json` con tus credenciales
-
-### Error: "Model not loaded" en la API
-```bash
-# Asegúrate de que el pipeline haya terminado exitosamente
-ls -la models/production/
-
-# Debe contener:
-# - model.joblib
-# - preprocessor.joblib
-# - metrics.json
-
-# Si no existe, ejecuta:
-dvc repro
-```
-
-### Error: "MLflow tracking URI not accessible"
-```bash
-# Verifica que MLflow esté corriendo
-mlflow ui --host 0.0.0.0 --port 5000
-
-# O cambia a file-based tracking en .env:
-# MLFLOW_TRACKING_URI=./mlruns
-```
-
-### El pipeline DVC no detecta cambios
-```bash
-# Forzar re-ejecución de una etapa
-dvc repro --force train_baseline
-
-# Ver qué cambió
-dvc status
-
-# Limpiar caché
-dvc gc
-```
-
-### Problemas de memoria durante entrenamiento
-```bash
-# Reducir n_estimators en params.yaml
-# O usar menos datos para pruebas rápidas
-```
-
-## 🛠 Comandos Útiles
+### Docker Compose (Stack Completo)
 
 ```bash
-# Ver métricas de todos los experimentos
-dvc metrics show
-
-# Comparar con experimento anterior
-dvc metrics diff HEAD~1
-
-# Ver gráfica del pipeline
-dvc dag
-
-# Verificar qué cambió en el pipeline
-dvc status
-
-# Limpiar outputs del pipeline
-dvc remove dvc.yaml
-
-# Re-ejecutar todo desde cero
-rm -rf models/ data/processed/ data/reports/
-dvc repro
-
-# Ver logs de MLflow
-cat mlruns/*/meta.yaml
-
-# Verificar salud de la API
-curl http://localhost:8000/health | jq
-
-# Ver métricas de la API
-curl http://localhost:8000/metrics | jq
-
-# Test rápido de predicción
-curl -X POST http://localhost:8000/predict \
-  -H "Content-Type: application/json" \
-  -d @tests/sample_input.json
-```
-
-### Docker Compose
-
-El proyecto incluye `docker-compose.yml` con dos servicios:
-
-1. **MLflow Server** (Puerto 5000)
-   - Tracking server
-   - Backend: file system
-   - Artifacts: local storage
-
-2. **API Service** (Puerto 8000)
-   - FastAPI application
-   - Auto-reload en desarrollo
-   - Health checks configurados
-
-```bash
-# Desarrollo
-docker-compose up
-
-# Producción (detached)
+# Iniciar servicios (API + MLflow UI)
 docker-compose up -d
 
 # Ver logs
 docker-compose logs -f api
 
-# Escalar API
-docker-compose up --scale api=3
+# Detener servicios
+docker-compose down
 ```
 
-### Kubernetes (Ejemplo)
+**Servicios disponibles:**
+- API: http://localhost:8000
+- MLflow UI: http://localhost:5000
+- Docs: http://localhost:8000/docs
 
-```yaml
-# deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: housing-api
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: housing-api
-  template:
-    metadata:
-      labels:
-        app: housing-api
-    spec:
-      containers:
-      - name: api
-        image: housing-price-api:latest
-        ports:
-        - containerPort: 8000
-        env:
-        - name: MLFLOW_TRACKING_URI
-          value: "http://mlflow-service:5000"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        resources:
-          requests:
-            memory: "512Mi"
-            cpu: "500m"
-          limits:
-            memory: "1Gi"
-            cpu: "1000m"
+### GitHub Actions CI/CD
+
+3 workflows automatizados:
+
+1. **`ml-pipeline.yml`** (on push to main)
+   - Setup Python environment
+   - Run tests
+   - Execute DVC pipeline
+   - Build Docker image
+   - Deploy to production
+
+2. **`api-tests.yml`** (on PR)
+   - Unit tests
+   - Integration tests
+   - API tests
+
+3. **`scheduled-retrain.yml`** (cron: weekly)
+   - Reentrenamiento automático
+   - Evaluación de modelo nuevo
+   - Deploy si mejora performance
+
+---
+
+## 🧠 Decisiones Técnicas
+
+### 1. Stack Tecnológico
+
+**¿Por qué estas tecnologías?**
+
+| Herramienta | Justificación |
+|-------------|---------------|
+| **XGBoost** | Mejor performance para datos tabulares, interpretable con SHAP |
+| **FastAPI** | Async by default, validación automática (Pydantic), docs autogeneradas |
+| **MLflow** | Open-source, tracking completo, Model Registry, serving capabilities |
+| **DVC** | Versionado de datos/modelos, reproducibilidad, integración Git |
+| **Docker** | Portabilidad, reproducibilidad del entorno, fácil deployment |
+| **GitHub Actions** | CI/CD nativo de GitHub, gratuito, gran ecosistema de actions |
+
+### 2. Arquitectura de Pipeline
+
+**Separación clara de responsabilidades:**
+
+- `data_preparation.py` → **ÚNICO responsable del scaler**
+  - Guarda `scaler.pkl` directamente en `models/production/latest/`
+  - Evita duplicación y mantiene coherencia
+  
+- `model_train.py` → **SOLO entrena y exporta modelo**
+  - No duplica el scaler
+  - Verifica que scaler exista antes de exportar
+
+**Beneficios:**
+- No hay duplicación de lógica
+- El scaler siempre está sincronizado con los datos
+- Pipeline más eficiente (no re-calcula scaler)
+
+### 3. MLflow Autologging vs Manual Logging
+
+**Elegimos Autologging porque:**
+- ✅ Logs automáticos de hiperparámetros
+- ✅ Captura model signature automáticamente
+- ✅ Guarda pip requirements
+- ✅ Menos código, menos errores
+
+**Lo que agregamos manualmente:**
+- Feature importance plots
+- SHAP values y waterfall plots
+- Custom metrics (CV scores, test metrics)
+- Metadata JSON para API
+
+### 4. Scaler: Dict vs StandardScaler Puro
+
+**Problema original:**
+```python
+# ❌ ANTES: Guardaba dict
+joblib.dump({
+    "escalador": StandardScaler(),
+    "nombres_caracteristicas": [...],
+    "nombre_objetivo": "MEDV"
+}, "scaler.pkl")
 ```
 
-## 💡 Decisiones Técnicas
+**Solución:**
+```python
+# ✅ AHORA: Guarda StandardScaler puro
+joblib.dump(prep.escalador, "models/production/latest/scaler.pkl")
+```
 
-### 1. **Stack Agnóstico Cloud**
-**Decisión**: Usar solo herramientas open-source (MLflow, FastAPI, Docker)
+**Justificación:**
+- API necesita `.transform()` directamente
+- Más simple, menos overhead
+- Metadata de features ya está en `metadata.json`
 
-**Justificación**:
-- ✅ Portabilidad total entre proveedores
-- ✅ Sin vendor lock-in
-- ✅ Control completo del stack
-- ✅ Costos predecibles
-- ❌ Menos features managed (auto-scaling, managed infra)
+### 5. Validación de Inputs (Pydantic)
 
-**Alternativas consideradas**: AWS SageMaker, Google AI Platform, Azure ML
+**Features requeridas vs opcionales:**
 
-### 2. **MLflow para Experiment Tracking**
-**Decisión**: MLflow open-source con backend de archivos
+- **Requeridas** (10): Las que el modelo usa → `Field(...)`
+- **Opcionales** (3): Las que el scaler necesita pero modelo no usa → `Field(0.0)`
 
-**Justificación**:
-- ✅ Industry standard
-- ✅ UI integrada para visualización
-- ✅ Versionado de modelos
-- ✅ Fácil migración a backends robustos (PostgreSQL, S3)
-- ✅ API Python simple
+```python
+class PredictionInput(BaseModel):
+    # Requeridas por el modelo
+    CRIM: float = Field(..., ge=0.0, le=100.0)
+    RM: float = Field(..., ge=3.0, le=9.0)
+    
+    # Opcionales (para scaler)
+    ZN: Optional[float] = Field(0.0, ge=0.0, le=100.0)
+```
 
-**Alternativas consideradas**: Weights & Biases, Neptune.ai, DVC
+**Beneficios:**
+- Validación automática de rangos
+- Documentación autogenerada
+- Mejor experiencia de usuario (errores claros)
 
-### 3. **FastAPI como Framework Web**
-**Decisión**: FastAPI sobre Flask/Django
+### 6. Seguridad: API Keys + Rate Limiting
 
-**Justificación**:
-- ✅ Performance superior (async/await)
-- ✅ Validación automática con Pydantic
-- ✅ Documentación auto-generada (OpenAPI/Swagger)
-- ✅ Type hints nativos
-- ✅ Diseñado para APIs modernas
+**Implementación simple pero efectiva:**
 
-**Benchmarks**: ~3x más rápido que Flask en I/O bound tasks
+- API Keys en variable de entorno (configurable)
+- Rate limiter in-memory (100 req/min)
+- Para producción escalable → usar Redis
 
-### 4. **Múltiples Modelos con Selección Automática**
-**Decisión**: Entrenar 4 modelos y seleccionar el mejor por RMSE
+**Alternativas consideradas:**
+- OAuth2: Sobrekill para este caso
+- JWT: Más complejo sin beneficio claro
+- Sin auth: ❌ No aceptable en producción
 
-**Justificación**:
-- ✅ Validación de que modelo simple no es suficiente
-- ✅ Comparación justa con mismos datos
-- ✅ Random Forest ganó consistentemente (mejor bias-variance tradeoff)
-- ✅ Tracking de todos los experimentos
+### 7. Monitoreo: In-Memory vs Persistente
 
-**Modelos probados**:
-1. Linear Regression (baseline)
-2. Ridge (regularización L2)
-3. Random Forest (ensemble, no lineal)
-4. Gradient Boosting (ensemble secuencial)
-
-### 5. **Monitoreo In-Process**
-**Decisión**: Monitoreo dentro del proceso de la API
-
-**Justificación**:
-- ✅ Simplicidad (no requiere infra adicional)
+**Solución actual: In-memory (deque)**
+- ✅ Rápido, sin overhead
 - ✅ Suficiente para MVP
-- ✅ Fácil evolución a Prometheus/Grafana
-- ❌ No persistente entre reinicios
+- ❌ Se pierde al restart
 
-**Mejora futura**: Exportar a Prometheus + Grafana
+**Para producción:**
+- Usar Prometheus + Grafana
+- Persistir métricas en TimeSeries DB
+- Alerting con thresholds configurables
 
-### 6. **StandardScaler vs Min-Max**
-**Decisión**: StandardScaler para normalización
+---
 
-**Justificación**:
-- ✅ No asume rango fijo [0,1]
-- ✅ Robusto a outliers
-- ✅ Funciona bien con modelos lineales y tree-based
-- ✅ Preserva estructura de outliers
+## 🧪 Testing
 
-### 7. **Estructura Modular**
-**Decisión**: Separación clara de concerns
+Suite completa de tests con pytest:
 
-**Justificación**:
-- ✅ Testeable independientemente
-- ✅ Reutilizable (preprocessing en train e inference)
-- ✅ Extensible (fácil agregar nuevos modelos)
-- ✅ Mantenible
+```bash
+# Todos los tests
+pytest
 
+# Con coverage
+pytest --cov=src --cov=api --cov-report=html
+
+# Solo tests rápidos
+pytest -m "not slow"
+
+# Solo tests de API
+pytest tests/test_api.py -v
+
+# Solo tests de pipeline
+pytest tests/test_pipeline.py -v
 ```
-config.py          → Configuración centralizada
-preprocessing.py   → Lógica de datos
-train.py          → Pipeline de entrenamiento
-main.py           → API
-monitoring.py     → Observabilidad
-```
 
-## 🚀 Mejoras Futuras
+### Categorías de Tests
+
+1. **Unit Tests** (`test_pipeline.py`)
+   - Data cleaning
+   - Train/test splitting
+   - Scaler fitting/transforming
+
+2. **Integration Tests** (`test_api.py`)
+   - Endpoints (health, predict, batch)
+   - Input validation
+   - Error handling
+   - Performance (latency)
+
+3. **Model Quality Tests** (`test_model.py`)
+   - Performance thresholds (RMSE < 5.0, R² > 0.7)
+   - Feature importance
+   - Model invariants (más rooms → mayor precio)
+   - Scaler properties
+
+---
+
+## 🔮 Mejoras Futuras
 
 ### Corto Plazo (1-2 sprints)
 
-1. **Feature Engineering**
-   - Interacciones entre features (RM * DIS)
-   - Transformaciones no lineales (log, sqrt)
-   - Binning de variables continuas
+1. **Data Quality Checks**
+   - Implementar Great Expectations
+   - Validación automática de datos incoming
+   - Alertas en data quality issues
 
-2. **Hyperparameter Tuning**
-   - Grid Search o Random Search
-   - Optuna para optimización bayesiana
-   - Validación cruzada k-fold
+2. **A/B Testing**
+   - Endpoint para múltiples modelos
+   - Traffic splitting configurable
+   - Comparación de performance
 
-3. **Model Validation**
-   - Cross-validation en entrenamiento
-   - Análisis de residuos
-   - Feature importance
+3. **Explicabilidad**
+   - Endpoint `/explain` con SHAP values
+   - Feature contribution por predicción
 
-4. **Testing Mejorado**
-   - Tests de integración end-to-end
-   - Tests de carga (locust)
-   - Contract testing para API
+### Mediano Plazo (3-6 meses)
 
-### Medio Plazo (3-6 meses)
+4. **Model Registry Avanzado**
+   - Staging → Production automático
+   - Rollback capabilities
+   - Modelo champion/challenger
 
-5. **Monitoreo Avanzado**
-   - Integración con Prometheus + Grafana
-   - Alertas automáticas (PagerDuty, Slack)
-   - Dashboards de métricas de negocio
+5. **Monitoring Avanzado**
+   - Prometheus + Grafana stack
+   - Alerting basado en métricas
+   - Dashboards personalizados
 
-6. **Data Drift Detection Robusto**
-   - Kolmogorov-Smirnov test
-   - Population Stability Index (PSI)
-   - Reentrenamiento automático si drift > threshold
+6. **Reentrenamiento Inteligente**
+   - Trigger basado en drift detection
+   - Reentrenamiento con datos nuevos
+   - Evaluación automática pre-deploy
 
-7. **A/B Testing**
-   - Framework para probar modelos nuevos
-   - Traffic splitting
-   - Métricas de negocio
+### Largo Plazo (6+ meses)
 
-8. **Model Registry**
-   - Versionado de modelos con MLflow Registry
-   - Staging → Production promotion
-   - Rollback automático
+7. **Kubernetes Deployment**
+   - Helm charts para deployment
+   - Autoscaling basado en carga
+   - Multi-region deployment
 
-### Largo Plazo (6-12 meses)
+8. **Feature Store**
+   - Centralización de features
+   - Online/Offline serving
+   - Feature lineage tracking
 
-9. **Feature Store**
-   - Feast o Tecton
-   - Features compartidas entre modelos
-   - Consistencia train/serve
+9. **AutoML Integration**
+   - Hyperparameter optimization automático
+   - Model selection automático
+   - Feature engineering automático
 
-10. **Advanced Deployment**
-    - Blue-green deployment
-    - Canary releases
-    - Shadow mode
-
-11. **AutoML**
-    - Auto-sklearn o H2O AutoML
-    - Exploración automática de modelos
-    - Feature engineering automático
-
-12. **Seguridad**
-    - Autenticación API (OAuth2, API keys)
-    - Rate limiting
-    - Input validation más estricta
-    - Encriptación de datos sensibles
-
-13. **Escalabilidad**
-    - Kubernetes con HPA
-    - Cache de predicciones (Redis)
-    - Batch inference optimizado
-    - GPU para modelos complejos
-
-14. **Compliance & Governance**
-    - Lineage de datos
-    - Explicabilidad (SHAP, LIME)
-    - Audit logs
-    - GDPR compliance
+---
 
 ## 🤖 Uso de Herramientas AI
 
-Este proyecto fue desarrollado con asistencia de **GitHub Copilot** y **GPT-4** en las siguientes áreas:
+Este proyecto fue desarrollado con asistencia de herramientas de IA para maximizar productividad y calidad:
 
-### Copilot (Inline suggestions)
-- ✅ Autocompletado de funciones repetitivas
-- ✅ Generación de docstrings
-- ✅ Sugerencias de tipo hints
-- ✅ Patrones de código comunes
+### GitHub Copilot
 
-### GPT-4 (Chat-based)
-- ✅ Diseño de arquitectura MLOps
-- ✅ Revisión de decisiones técnicas
-- ✅ Generación de tests unitarios
-- ✅ Escritura de documentación
-- ✅ Troubleshooting de errores
+**Uso principal:**
+- Autocompletado de código repetitivo (logging, docstrings)
+- Sugerencias de tests basados en funciones existentes
+- Generación de schemas Pydantic
 
-### Código Escrito Manualmente
-- ✅ Lógica de negocio core (preprocessing, training)
-- ✅ Configuración de MLflow
-- ✅ Diseño de API endpoints
-- ✅ Integración de componentes
+**Impacto:**
+- ⚡ 40% más rápido en escribir tests
+- 📝 Documentación más consistente
+- 🐛 Menos bugs por typos
 
-### Validación
-- ✅ Todo el código fue revisado manualmente
-- ✅ Tests ejecutados y pasando
-- ✅ Best practices validadas
-- ✅ Security considerations aplicadas
+### ChatGPT / Claude
 
-**Nota**: Las herramientas AI aceleraron el desarrollo ~30-40%, especialmente en tareas repetitivas y documentación.
+**Uso principal:**
+- Revisión de arquitectura y decisiones técnicas
+- Optimización de prompts para documentación
+- Debugging de issues complejos (ej: scaler dict problem)
 
-## 📚 Referencias
+**Ejemplo concreto:**
+```
+Problema: API fallaba con "dict has no attribute transform"
+Solución con AI: Identificó que scaler estaba guardado como dict
+→ Cambió arquitectura para guardar StandardScaler puro
+```
 
-- [MLflow Documentation](https://mlflow.org/docs/latest/index.html)
-- [FastAPI Documentation](https://fastapi.tiangolo.com/)
-- [scikit-learn Documentation](https://scikit-learn.org/)
-- [Boston Housing Dataset](https://www.kaggle.com/datasets/altavish/boston-housing-dataset)
-- [MLOps Best Practices](https://ml-ops.org/)
-- [Google MLOps Principles](https://cloud.google.com/architecture/mlops-continuous-delivery-and-automation-pipelines-in-machine-learning)
+### Consideraciones Éticas
+
+- ✅ Todo el código generado fue **revisado y validado**
+- ✅ Se **entiende completamente** la lógica implementada
+- ✅ Tests garantizan **correctitud** del código
+- ✅ Documentación refleja **decisiones conscientes**, no solo output de AI
+
+---
+
+## 📝 Licencia
+
+MIT License - ver [LICENSE](LICENSE) para detalles
+
+---
 
 ## 👤 Autor
 
 **Mateo Restrepo**
 - GitHub: [@marestrepohi](https://github.com/marestrepohi)
-- Proyecto: Prueba Técnica MLOps - MercadoLibre
-
-## 📄 Licencia
-
-Este proyecto es para fines educativos y de evaluación técnica.
+- LinkedIn: [mateo-restrepo](https://linkedin.com/in/mateo-restrepo)
 
 ---
 
-**¿Preguntas?** Abre un issue o contacta al autor.
+## 🙏 Agradecimientos
 
-**Para la presentación**: Revisar secciones de Arquitectura, Decisiones Técnicas y Mejoras Futuras. 🚀
+- Dataset: Boston Housing (UCI Machine Learning Repository)
+- MLflow Team por el excelente framework de tracking
+- FastAPI team por la mejor experiencia de developer
+- Comunidad open-source de Python ML
+
+---
+
+## 📚 Referencias
+
+- [MLflow Documentation](https://mlflow.org/docs/latest/index.html)
+- [FastAPI Best Practices](https://fastapi.tiangolo.com/tutorial/)
+- [DVC Documentation](https://dvc.org/doc)
+- [XGBoost Documentation](https://xgboost.readthedocs.io/)
+- [MLOps Principles](https://ml-ops.org/)
+
+---
+
+**⭐ Si este proyecto te fue útil, considera darle una estrella en GitHub!**
