@@ -14,8 +14,8 @@ stages:
       size: 35008
     - path: data/reports/
       hash: md5
-      md5: 7661134e76e6ab3bb8104d786bfd4597.dir
-      size: 39750377
+      md5: a3010780c2ff4f52ed1b13ef32c5dd42.dir
+      size: 39750497
       nfiles: 3
   data_preparation:
     cmd: python src/data_preparation.py
@@ -76,28 +76,27 @@ stages:
       size: 1403
     - path: src/model_train.py
       hash: md5
-      md5: d80e496c8a92e47438a47a3bf3941780
-      size: 28329
+      md5: ed87c8f8b21f2b206c0fff206db1d4bc
+      size: 34569
     params:
       params.yaml:
         data_ingestion.target_column: MEDV
         mlflow.experiment_name: housing-price-prediction
         mlflow.tracking_uri: ./mlruns
-        model_training.model_output_dir: models
         preprocessing.processed_data_dir: data/processed
     outs:
-    - path: models/metrics.json
+    - path: models/production/latest/metadata.json
       hash: md5
-      md5: 77ebe83e1ec478a83e8c5ba86780ee14
-      size: 283
-    - path: models/model_info.json
+      md5: 1ae0211a7f65ed01b33ed98c0e7fd7ab
+      size: 880
+    - path: models/production/latest/model.pkl
       hash: md5
-      md5: b342101a0ee2b0ada028ec4f3fceed79
-      size: 270
-    - path: models/xgboost_model.pkl
+      md5: e2b0b885e4be1832953d017dcde75a25
+      size: 297162
+    - path: models/production/latest/scaler.pkl
       hash: md5
-      md5: fc70c8187cea65a5528b8d787833fb15
-      size: 298069
+      md5: 934483e9f9c7918e02584e1613124941
+      size: 1403
   model_register:
     cmd: python src/model_register.py --stage Staging
     deps:
