@@ -152,6 +152,11 @@ def generar_reporte_eda(df: pd.DataFrame):
         # Guardar los datos del reporte en formato JSON con timestamp.
         json_path = REPORTS_DIR / f"eda_data_{fecha_actual}.json"
         json_data = profile.to_json()
+        
+        # Sanitizar el JSON: reemplazar NaN con null para que sea válido
+        # ydata-profiling genera NaN que no son válidos en JSON estándar
+        json_data = json_data.replace(': NaN,', ': null,').replace(': NaN}', ': null}')
+        
         with open(json_path, "w", encoding="utf-8") as f:
             f.write(json_data)
         logger.info(f"✅ Datos del reporte en JSON guardados en: {json_path}")
