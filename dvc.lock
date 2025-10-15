@@ -5,8 +5,8 @@ stages:
     deps:
     - path: src/data_ingestion.py
       hash: md5
-      md5: ce0dc42be723ce042c8a0215c4beb65f
-      size: 7943
+      md5: fe97bbb4410d78a5b0f8f6624a34309e
+      size: 7744
     outs:
     - path: data/raw/HousingData.csv
       hash: md5
@@ -14,8 +14,8 @@ stages:
       size: 35008
     - path: data/reports/
       hash: md5
-      md5: a3010780c2ff4f52ed1b13ef32c5dd42.dir
-      size: 39750497
+      md5: 3e751671e85774ca6a8501f64253ad08.dir
+      size: 39750086
       nfiles: 3
   data_preparation:
     cmd: python src/data_preparation.py
@@ -26,8 +26,8 @@ stages:
       size: 35008
     - path: src/data_preparation.py
       hash: md5
-      md5: 99bc7ce659da80629387129c19b06747
-      size: 23769
+      md5: 08e6ce7ff5ebab51b3f4a8405e46c25f
+      size: 24459
     params:
       params.yaml:
         data_ingestion:
@@ -55,6 +55,10 @@ stages:
       md5: 262350a5468be8776e9c8c54d4a1d63b.dir
       size: 264732
       nfiles: 6
+    - path: models/production/latest/scaler.pkl
+      hash: md5
+      md5: 4c22e87031a6e96d383d0c5dfde800ed
+      size: 1247
     - path: models/standard_scaler.pkl
       hash: md5
       md5: 934483e9f9c7918e02584e1613124941
@@ -70,14 +74,10 @@ stages:
       hash: md5
       md5: 93fb0538a3d2afc80aa1db1394ef1eb0
       size: 105688
-    - path: models/standard_scaler.pkl
-      hash: md5
-      md5: 934483e9f9c7918e02584e1613124941
-      size: 1403
     - path: src/model_train.py
       hash: md5
-      md5: ed87c8f8b21f2b206c0fff206db1d4bc
-      size: 34569
+      md5: d1f9c7eda1ecfe9f809ed9695a84f95f
+      size: 34951
     params:
       params.yaml:
         data_ingestion.target_column: MEDV
@@ -87,16 +87,12 @@ stages:
     outs:
     - path: models/production/latest/metadata.json
       hash: md5
-      md5: 1ae0211a7f65ed01b33ed98c0e7fd7ab
+      md5: d20e0685d9604d52ab1811e740789394
       size: 880
     - path: models/production/latest/model.pkl
       hash: md5
       md5: e2b0b885e4be1832953d017dcde75a25
       size: 297162
-    - path: models/production/latest/scaler.pkl
-      hash: md5
-      md5: 934483e9f9c7918e02584e1613124941
-      size: 1403
   model_register:
     cmd: python src/model_register.py --stage Staging
     deps:

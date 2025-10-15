@@ -24,6 +24,7 @@ stages:
   # ===================================================================
   # Stage 2: Data Preparation
   # Limpieza, transformación y feature engineering
+  # GENERA: StandardScaler para producción (models/production/latest/scaler.pkl)
   # ===================================================================
   data_preparation:
     cmd: python src/data_preparation.py
@@ -37,14 +38,21 @@ stages:
     outs:
       - data/processed/
       - models/standard_scaler.pkl
+      - models/production/latest/scaler.pkl
 
   # ===================================================================
   # Stage 3: Model Training
   # Entrenamiento de 3 experimentos XGBoost con SHAP + MLflow
+  # 🔥 USA MLFLOW AUTOLOGGING - Todo se guarda en mlruns/
+  # 🔥 EXPORTA AUTOMÁTICAMENTE a models/production/latest/
   # Experimentos:
   #   1. Hyperparameter Tuning (todas las features)
   #   2. Important Features (SHAP percentil 20 + default params)
   #   3. Tuning on Selected Features (features de exp2 + new tuning)
+  # Los modelos, artifacts, métricas y parámetros se guardan automáticamente
+  # en mlruns/ gracias a mlflow.xgboost.autolog()
+  # El mejor modelo se exporta automáticamente para la API
+  # NOTA: El scaler.pkl viene desde data_preparation (no se genera aquí)
   # ===================================================================
   model_train:
     cmd: python src/model_train.py
@@ -52,36 +60,25 @@ stages:
       - src/model_train.py
       - data/processed/train.csv
       - data/processed/test.csv
-      - models/standard_scaler.pkl
     params:
       - data_ingestion.target_column
       - preprocessing.processed_data_dir
-      - model_training.model_output_dir
-      - model_training.training_artifacts_dir
       - mlflow.tracking_uri
       - mlflow.experiment_name
     outs:
-      - mlartifacts/training/best_model.pkl
-      - mlartifacts/training/best_model_info.json
-      - mlartifacts/training/best_metrics.json
-      - mlartifacts/training/experiments_summary.json
+      # Modelo exportado para la API (scaler.pkl viene de data_preparation)
+      - models/production/latest/model.pkl
+      - models/production/latest/metadata.json
 
   # ===================================================================
-  # Stage 4: Model Registration
-  # Registro del mejor modelo en MLflow Model Registry para producción
-  # Promociona el modelo a stage Staging/Production
+  # Stage 4: Model Registration (OPCIONAL)
+  # Registro del mejor modelo en MLflow Model Registry.
+  # NOTA: Este stage es opcional. El modelo ya está listo en 
+  #       models/production/latest/ después del entrenamiento.
+  #       Solo ejecuta esto si necesitas versionado en Model Registry.
   # ===================================================================
-  model_register:
-    cmd: python src/model_register.py --stage Staging
-    deps:
-      - src/model_register.py
-      - mlartifacts/training/best_model_info.json
-      - mlartifacts/training/best_metrics.json
-      - mlartifacts/training/best_model.pkl
-      - models/standard_scaler.pkl
-    params:
-      - mlflow
-    outs:
-      - mlartifacts/registry/registered_model_info.json
-      - mlartifacts/registry/registration_metrics.json
-      - models/production/
+  # model_register:
+  #   cmd: python src/model_register.py --stage Staging
+  #   deps:
+  #     - src/model_register.py
+  #     - models/model_info.json

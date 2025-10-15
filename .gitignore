@@ -27,7 +27,7 @@ ENV/
 
 # MLflow
 mlruns/
-mlartifacts/
+
 
 # Models
 models/
@@ -42,6 +42,7 @@ data/reports/*.html
 data/reports/eda_data*.json
 data/reports/data_metrics.json
 data/reports/preprocessing_metrics.json
+data/
 
 # IDE
 .vscode/

@@ -77,10 +77,9 @@ model_evaluation:
 
 # ----- Model Training -----
 model_training:
-  model_output_dir: "models"
-  training_artifacts_dir: "mlartifacts/training"
+  # 🔥 Modelos en mlruns/ + export automático a models/production/latest/
   
-  # XGBoost Hyperparameters
+  # XGBoost Hyperparameters (referencia - autolog registra los reales)
   xgboost:
     n_estimators: 100
     max_depth: 6
@@ -103,7 +102,6 @@ mlflow:
     latest: "current"
     production: "champion"
     staging: "challenger"
-  post_deployment_metrics_path: "mlartifacts/registry/post_deployment_metrics.json"
   
   # Registro de artefactos
   log_artifacts: true

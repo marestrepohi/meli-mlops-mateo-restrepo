@@ -1,0 +1,130 @@
+name: Scheduled Model Retraining
+
+on:
+  schedule:
+    # Ejecutar cada domingo a las 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:  # Permite ejecución manual
+
+env:
+  PYTHON_VERSION: '3.10'
+
+jobs:
+  retrain:
+    name: Retrain Model
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -e .
+    
+    - name: Configure Kaggle credentials
+      env:
+        KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+        KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+      run: |
+        mkdir -p ~/.kaggle
+        echo "{\"username\":\"$KAGGLE_USERNAME\",\"key\":\"$KAGGLE_KEY\"}" > ~/.kaggle/kaggle.json
+        chmod 600 ~/.kaggle/kaggle.json
+    
+    - name: Run full DVC pipeline
+      run: |
+        echo "🚀 Starting scheduled retraining..."
+        dvc repro --force
+    
+    - name: Check model performance
+      run: |
+        python -c "
+import json
+from pathlib import Path
+
+metadata_path = Path('models/production/latest/metadata.json')
+if metadata_path.exists():
+    with open(metadata_path) as f:
+        metadata = json.load(f)
+    
+    rmse = metadata['metrics']['test_rmse']
+    r2 = metadata['metrics']['test_r2']
+    
+    print(f'📊 New Model Performance:')
+    print(f'   RMSE: {rmse:.4f}')
+    print(f'   R²: {r2:.4f}')
+    
+    # Define performance thresholds
+    RMSE_THRESHOLD = 5.0
+    R2_THRESHOLD = 0.70
+    
+    if rmse > RMSE_THRESHOLD or r2 < R2_THRESHOLD:
+        print(f'⚠️ WARNING: Model performance below thresholds!')
+        print(f'   RMSE threshold: {RMSE_THRESHOLD}')
+        print(f'   R² threshold: {R2_THRESHOLD}')
+        exit(1)
+    
+    print('✅ Model performance meets thresholds')
+else:
+    print('❌ Metadata file not found')
+    exit(1)
+"
+    
+    - name: Upload retrained model
+      uses: actions/upload-artifact@v4
+      with:
+        name: retrained-model-${{ github.run_number }}
+        path: |
+          models/production/latest/
+          models/model_info.json
+          mlruns/
+        retention-days: 90
+    
+    - name: Create retraining report
+      run: |
+        echo "## 🔄 Scheduled Retraining Report" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Date**: $(date -u)" >> $GITHUB_STEP_SUMMARY
+        echo "**Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📊 Model Performance" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+        cat models/production/latest/metadata.json | jq '.metrics' >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+    
+    - name: Commit updated model (optional)
+      if: github.event_name == 'schedule'
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        
+        # Add only specific files
+        git add models/production/latest/metadata.json
+        git add models/model_info.json
+        
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "chore: automated model retraining [skip ci]"
+          git push
+        fi
+    
+    # Opcional: Notificar en Slack/Discord/Email
+    # - name: Send notification
+    #   if: failure()
+    #   uses: slackapi/slack-github-action@v1
+    #   with:
+    #     payload: |
+    #       {
+    #         "text": "🚨 Scheduled model retraining failed!"
+    #       }
+    #   env:
+    #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
