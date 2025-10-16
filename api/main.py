@@ -1,6 +1,6 @@
 """
-FastAPI application for housing price prediction.
-Loads production model from MLflow Model Registry.
+Aplicación FastAPI para predicción de precios de viviendas.
+Carga el modelo de producción desde MLflow Model Registry.
 """
 
 from fastapi import FastAPI, HTTPException
@@ -20,7 +20,7 @@ from datetime import datetime
 
 from api.monitoring import PredictionMonitor
 
-# Setup logging
+# Configuración del Logging
 logging.basicConfig(
     level=logging.INFO,
     format='{"timestamp":"%(asctime)s","level":"%(levelname)s","message":"%(message)s"}',
@@ -28,14 +28,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Initialize FastAPI app
+# Inicializar aplicación FastAPI
 app = FastAPI(
-    title="Housing Price Prediction API",
+    title="API de Predicción de Precios de Viviendas",
     version="2.0.0",
-    description="API for predicting housing prices using XGBoost model from MLflow",
+    description="API para predicción de precios de viviendas usando modelo XGBoost desde MLflow",
 )
 
-# CORS middleware
+# Middleware CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -65,7 +65,7 @@ async def log_requests(request, call_next):
         logger.error(f'{{"method":"{request.method}","path":"{request.url.path}","duration_ms":{duration:.2f},"error":"{str(e)}"}}')
         raise
 
-# Global variables
+# Variables globales
 model = None
 scaler = None
 model_info = {}
@@ -92,31 +92,31 @@ SELECTED_FEATURES = [
 
 
 # ============================================================================
-# Pydantic Models
+# Modelos Pydantic
 # ============================================================================
 
 class PredictionInput(BaseModel):
     """
-    Input schema - Acepta todas las 13 variables.
+    Esquema de entrada - Acepta todas las 13 variables.
     Pydantic valida automáticamente tipos y rangos con Field(ge=min, le=max).
     """
     
     # Features requeridas (las que usa el modelo)
-    CRIM: float = Field(..., ge=0.0, le=100.0, description="Per capita crime rate")
-    NOX: float = Field(..., ge=0.3, le=1.0, description="Nitric oxides concentration")
-    RM: float = Field(..., ge=3.0, le=9.0, description="Avg rooms per dwelling")
-    AGE: float = Field(..., ge=0.0, le=100.0, description="% units built pre-1940")
-    DIS: float = Field(..., description="Weighted distances to five Boston employment centres", ge=0.5, le=12.0)
-    RAD: float = Field(..., description="Index of accessibility to radial highways", ge=1.0, le=24.0)
-    TAX: float = Field(..., description="Full-value property-tax rate per $10,000", ge=100.0, le=800.0)
-    PTRATIO: float = Field(..., description="Pupil-teacher ratio by town", ge=10.0, le=25.0)
-    B: float = Field(..., description="Proportion of Black residents index", ge=0.0, le=400.0)
-    LSTAT: float = Field(..., description="% lower status of the population", ge=0.0, le=40.0)
+    CRIM: float = Field(..., description="Tasa de criminalidad per cápita", ge=0.0, le=100.0)
+    NOX: float = Field(..., description="Concentración de óxidos nítricos", ge=0.3, le=1.0)
+    RM: float = Field(..., description="Promedio de habitaciones por vivienda", ge=3.0, le=9.0)
+    AGE: float = Field(..., description="Porcentaje de unidades construidas antes de 1940", ge=0.0, le=100.0)
+    DIS: float = Field(..., description="Distancias ponderadas a cinco centros de empleo de Boston", ge=0.5, le=12.0)
+    RAD: float = Field(..., description="Índice de accesibilidad a carreteras radiales", ge=1.0, le=24.0)
+    TAX: float = Field(..., description="Tasa de impuesto sobre la propiedad de valor completo por $10,000", ge=100.0, le=800.0)
+    PTRATIO: float = Field(..., description="Razón alumno-profesor por municipio", ge=10.0, le=25.0)
+    B: float = Field(..., description="Índice de proporción de residentes afroamericanos", ge=0.0, le=400.0)
+    LSTAT: float = Field(..., description="Porcentaje de población de estatus socioeconómico bajo", ge=0.0, le=40.0)
     
     # Features opcionales (las 3 restantes que el modelo no usa pero el scaler necesita)
-    ZN: Optional[float] = Field(0.0, description="Proportion of residential land zoned for lots over 25,000 sq.ft.", ge=0.0, le=100.0)
-    INDUS: Optional[float] = Field(0.0, description="Proportion of non-retail business acres per town", ge=0.0, le=30.0)
-    CHAS: Optional[float] = Field(0.0, description="Charles River dummy variable (1 if tract bounds river; 0 otherwise)", ge=0.0, le=1.0)
+    ZN: Optional[float] = Field(0.0, description="Proporción de terreno residencial zonificado para lotes > 25,000 sq.ft.", ge=0.0, le=100.0)
+    INDUS: Optional[float] = Field(0.0, description="Proporción de acres comerciales no minoristas por municipio", ge=0.0, le=30.0)
+    CHAS: Optional[float] = Field(0.0, description="Variable dummy del Río Charles (1 si limita río; 0 de otro modo)", ge=0.0, le=1.0)
 
     class Config:
         json_schema_extra = {
@@ -139,20 +139,20 @@ class PredictionInput(BaseModel):
 
 
 class PredictionOutput(BaseModel):
-    """Output schema for prediction endpoint."""
+    """Esquema de salida para el endpoint de predicción."""
     
-    prediction: float = Field(..., description="Predicted housing price in $1000s")
-    model_name: str = Field(..., description="Name of the model in MLflow")
-    model_version: str = Field(..., description="Version of the model used")
-    model_stage: str = Field(..., description="Stage of the model (Production/Staging)")
-    inference_time: float = Field(..., description="Time taken for inference in milliseconds")
-    features_used: List[str] = Field(..., description="Features used by the model")
+    prediction: float = Field(..., description="Precio predicho en miles de dólares")
+    model_name: str = Field(..., description="Nombre del modelo en MLflow")
+    model_version: str = Field(..., description="Versión del modelo utilizado")
+    model_stage: str = Field(..., description="Stage del modelo (Production/Staging)")
+    inference_time: float = Field(..., description="Tiempo de inferencia en milisegundos")
+    features_used: List[str] = Field(..., description="Features utilizadas por el modelo")
 
 
 class BatchPredictionInput(BaseModel):
-    """Input schema for batch predictions."""
+    """Esquema de entrada para predicciones en batch."""
     
-    data: List[Dict[str, float]] = Field(..., description="List of records with feature values")
+    data: List[Dict[str, float]] = Field(..., description="Lista de registros con valores de features")
     
     class Config:
         json_schema_extra = {
@@ -188,17 +188,17 @@ class BatchPredictionInput(BaseModel):
 
 
 class BatchPredictionOutput(BaseModel):
-    """Output schema for batch predictions."""
+    """Esquema de salida para predicciones en batch."""
     
-    predictions: List[Dict[str, Any]] = Field(..., description="List of predictions with metadata")
-    count: int = Field(..., description="Number of predictions made")
-    model_version: str = Field(..., description="Model version used")
-    total_inference_time: float = Field(..., description="Total inference time in milliseconds")
-    avg_inference_time: float = Field(..., description="Average inference time per prediction in milliseconds")
+    predictions: List[Dict[str, Any]] = Field(..., description="Lista de predicciones con metadatos")
+    count: int = Field(..., description="Número de predicciones realizadas")
+    model_version: str = Field(..., description="Versión del modelo utilizado")
+    total_inference_time: float = Field(..., description="Tiempo total de inferencia en milisegundos")
+    avg_inference_time: float = Field(..., description="Tiempo promedio de inferencia por predicción en milisegundos")
 
 
 class HealthResponse(BaseModel):
-    """Health check response schema."""
+    """Esquema de respuesta del health check."""
     
     status: str
     model_loaded: bool
@@ -211,7 +211,7 @@ class HealthResponse(BaseModel):
 
 
 class ModelInfoResponse(BaseModel):
-    """Model information response."""
+    """Información del modelo."""
     
     model_name: str
     model_version: str
@@ -235,15 +235,15 @@ class ProductionModelInfo(BaseModel):
     n_features: int
     all_features: List[str]
     
-    # Performance metrics
+    # Métricas de performance
     metrics: Dict[str, float]
     
-    # Model metadata
+    # Metadatos del modelo
     trained_at: Optional[str] = None
     registered_at: Optional[str] = None
     model_path: str
     
-    # Production info
+    # Información de producción
     deployment_date: Optional[str] = None
     uptime_hours: float
     total_predictions: int
@@ -257,19 +257,19 @@ class MonitoringStats(BaseModel):
     uptime_hours: float
     predictions_per_hour: float
     
-    # Predictions statistics
+    # Estadísticas de predicciones
     prediction_stats: Dict[str, float]
     
-    # Performance statistics
+    # Estadísticas de performance
     inference_stats: Dict[str, float]
     
-    # Recent activity
+    # Actividad reciente
     last_prediction_time: Optional[str] = None
     recent_predictions: List[float]
 
 
 # ============================================================================
-# Utility Functions
+# Funciones Auxiliares
 # ============================================================================
 
 # Función load_params eliminada - ya no se necesita cargar params.yaml
@@ -395,12 +395,12 @@ def prepare_features(input_data: Dict, features: List[str]) -> Dict[str, float]:
 
 
 # ============================================================================
-# Model Loading (Production)
+# Carga de Modelo (Producción)
 # ============================================================================
 
 
 # ============================================================================
-# Startup/Shutdown Events
+# Eventos de Inicio/Cierre
 # ============================================================================
 
 @app.on_event("startup")
@@ -444,14 +444,14 @@ async def shutdown_event():
 
 
 # ============================================================================
-# API Endpoints
+# Endpoints de la API
 # ============================================================================
 
 @app.get("/", tags=["Info"])
 async def root():
     """Información básica de la API."""
     return {
-        "message": "Housing Price Prediction API - Production Ready",
+        "message": "API de Predicción de Precios de Viviendas - Producción Lista",
         "version": "2.0.0",
         "model_loaded": model is not None,
         "scaler_loaded": scaler is not None,
@@ -473,7 +473,7 @@ async def root():
 
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
 async def health_check():
-    """Health check endpoint."""
+    """Endpoint de verificación de salud."""
     uptime = time.time() - monitor.start_time
     
     return HealthResponse(
@@ -492,7 +492,7 @@ async def health_check():
 async def get_model_info():
     """Obtiene información detallada del modelo cargado."""
     if model is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
+        raise HTTPException(status_code=503, detail="Modelo no cargado")
     
     return ModelInfoResponse(**model_info)
 
@@ -512,10 +512,10 @@ async def predict(input_data: PredictionInput):
           independientemente de cuántas variables use el modelo final.
     """
     if model is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
+        raise HTTPException(status_code=503, detail="Modelo no cargado")
     
     if scaler is None:
-        raise HTTPException(status_code=503, detail="Scaler not loaded")
+        raise HTTPException(status_code=503, detail="Escalador no cargado")
     
     try:
         start_time = time.time()
@@ -577,7 +577,7 @@ async def predict(input_data: PredictionInput):
         
     except Exception as e:
         logger.error(f"❌ Error en predicción: {e}")
-        raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error de predicción: {str(e)}")
 
 
 @app.post("/predict/batch", response_model=BatchPredictionOutput, tags=["Prediction"])
@@ -594,10 +594,10 @@ async def predict_batch(batch_input: BatchPredictionInput):
     Cada predicción se guarda individualmente en data/predictions/.
     """
     if model is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
+        raise HTTPException(status_code=503, detail="Modelo no cargado")
     
     if scaler is None:
-        raise HTTPException(status_code=503, detail="Scaler not loaded")
+        raise HTTPException(status_code=503, detail="Escalador no cargado")
     
     try:
         start_time = time.time()
@@ -669,7 +669,7 @@ async def predict_batch(batch_input: BatchPredictionInput):
         
     except Exception as e:
         logger.error(f"❌ Error en batch prediction: {e}")
-        raise HTTPException(status_code=500, detail=f"Batch prediction error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error en predicción batch: {str(e)}")
 
 
 @app.get("/metrics", tags=["Monitoring"])
@@ -738,7 +738,7 @@ async def get_monitoring_stats():
     - Predicciones por hora
     """
     if model is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
+        raise HTTPException(status_code=503, detail="Modelo no cargado")
     
     stats = monitor.get_detailed_stats()
     
@@ -770,14 +770,14 @@ async def detect_drift(threshold: float = 2.0):
     Nota: Se debe configurar baseline primero con POST /monitoring/baseline
     """
     if model is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
+        raise HTTPException(status_code=503, detail="Modelo no cargado")
     
     drift_info = monitor.detect_drift(threshold=threshold)
     
     return {
         **drift_info,
         "threshold": threshold,
-        "recommendation": "Configure baseline with POST /monitoring/baseline" if not drift_info["baseline_configured"] else None
+        "recommendation": "Configura baseline con POST /monitoring/baseline" if not drift_info["baseline_configured"] else None
     }
 
 
@@ -790,10 +790,10 @@ async def set_monitoring_baseline():
     Útil después de validar que el modelo está funcionando correctamente.
     """
     if model is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
+        raise HTTPException(status_code=503, detail="Modelo no cargado")
     
     if not monitor.predictions:
-        raise HTTPException(status_code=400, detail="No predictions available to set baseline")
+        raise HTTPException(status_code=400, detail="No hay predicciones disponibles para establecer baseline")
     
     # Set baseline from current predictions
     predictions_list = list(monitor.predictions)
@@ -825,7 +825,7 @@ async def get_feature_statistics():
     Incluye drift detection por feature si hay baseline configurado.
     """
     if model is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
+        raise HTTPException(status_code=503, detail="Modelo no cargado")
     
     feature_stats = monitor.get_feature_stats()
     
@@ -837,7 +837,7 @@ async def get_feature_statistics():
 
 
 def _generate_feature_rows(feature_stats: Dict) -> str:
-    """Helper function to generate feature statistics table rows."""
+    """Función auxiliar para generar filas de tabla de estadísticas de features."""
     if not feature_stats:
         return ""
     
@@ -871,7 +871,7 @@ async def monitoring_dashboard():
     Dashboard HTML de monitoreo con visualización de métricas.
     """
     if model is None:
-        return HTMLResponse(content="<h1>Model not loaded</h1>", status_code=503)
+        return HTMLResponse(content="<h1>Modelo no cargado</h1>", status_code=503)
     
     metrics = monitor.get_metrics()
     drift_info = monitor.detect_drift()
@@ -1002,86 +1002,86 @@ async def monitoring_dashboard():
             function refreshPage() {{
                 location.reload();
             }}
-            // Auto-refresh every 30 seconds
+            // Auto-refresh cada 30 segundos
             setTimeout(refreshPage, 30000);
         </script>
     </head>
     <body>
         <div class="container">
-            <h1>🔍 Model Monitoring Dashboard</h1>
+            <h1>🔍 Dashboard de Monitoreo de Modelo</h1>
             
             <p style="color: #666;">
-                <strong>Model:</strong> {model_info.get('model_name', 'N/A')} v{model_info.get('model_version', 'N/A')} 
+                <strong>Modelo:</strong> {model_info.get('model_name', 'N/A')} v{model_info.get('model_version', 'N/A')} 
                 | <strong>Stage:</strong> {model_info.get('model_stage', 'N/A')}
-                | <button class="refresh-button" onclick="refreshPage()">🔄 Refresh</button>
+                | <button class="refresh-button" onclick="refreshPage()">🔄 Actualizar</button>
             </p>
             
-            <!-- Drift Alert -->
+            <!-- Alerta de Drift -->
             {f'''
             <div class="alert alert-danger">
-                <strong>⚠️ Drift Detected!</strong><br>
-                Drift score: {drift_info.get('drift_score', 0):.2f} (threshold: 2.0)<br>
-                Current mean: {drift_info.get('current_mean', 0):.2f} | Baseline mean: {drift_info.get('baseline_mean', 0):.2f}
+                <strong>⚠️ ¡Drift Detectado!</strong><br>
+                Puntuación de drift: {drift_info.get('drift_score', 0):.2f} (umbral: 2.0)<br>
+                Media actual: {drift_info.get('current_mean', 0):.2f} | Media baseline: {drift_info.get('baseline_mean', 0):.2f}
             </div>
             ''' if drift_info.get('drift_detected') else ''}
             
             {f'''
             <div class="alert alert-warning">
-                <strong>ℹ️ Baseline Not Configured</strong><br>
-                Configure baseline for drift detection: <code>POST /monitoring/baseline</code>
+                <strong>ℹ️ Baseline No Configurado</strong><br>
+                Configura baseline para detección de drift: <code>POST /monitoring/baseline</code>
             </div>
             ''' if not drift_info.get('baseline_configured') else ''}
             
-            <!-- Metrics Grid -->
+            <!-- Cuadrícula de Métricas -->
             <div class="metric-grid">
                 <div class="metric-card">
-                    <h3>Total Predictions</h3>
+                    <h3>Predicciones Totales</h3>
                     <div class="metric-value">{metrics.get('total_predictions', 0):,}</div>
-                    <div class="metric-label">Since startup</div>
+                    <div class="metric-label">Desde inicio</div>
                 </div>
                 
                 <div class="metric-card">
-                    <h3>Uptime</h3>
+                    <h3>Tiempo de Actividad</h3>
                     <div class="metric-value">{metrics.get('uptime_hours', 0):.1f}h</div>
-                    <div class="metric-label">{metrics.get('predictions_per_hour', 0):.1f} pred/hour</div>
+                    <div class="metric-label">{metrics.get('predictions_per_hour', 0):.1f} pred/hora</div>
                 </div>
                 
                 <div class="metric-card">
-                    <h3>Avg Prediction</h3>
+                    <h3>Predicción Promedio</h3>
                     <div class="metric-value">${metrics.get('avg_prediction', 0):.1f}k</div>
-                    <div class="metric-label">Median: ${metrics.get('median_prediction', 0):.1f}k</div>
+                    <div class="metric-label">Mediana: ${metrics.get('median_prediction', 0):.1f}k</div>
                 </div>
                 
                 <div class="metric-card">
-                    <h3>Prediction Range</h3>
+                    <h3>Rango de Predicciones</h3>
                     <div class="metric-value">${metrics.get('min_prediction', 0):.1f}k - ${metrics.get('max_prediction', 0):.1f}k</div>
-                    <div class="metric-label">Min - Max</div>
+                    <div class="metric-label">Mín - Máx</div>
                 </div>
                 
                 <div class="metric-card">
-                    <h3>Avg Inference Time</h3>
+                    <h3>Tiempo Promedio de Inferencia</h3>
                     <div class="metric-value">{metrics.get('avg_inference_time_ms', 0):.1f}ms</div>
                     <div class="metric-label">P95: {metrics.get('p95_inference_time_ms', 0):.1f}ms</div>
                 </div>
                 
                 <div class="metric-card">
-                    <h3>Std Deviation</h3>
+                    <h3>Desviación Estándar</h3>
                     <div class="metric-value">${metrics.get('std_prediction', 0):.1f}k</div>
-                    <div class="metric-label">Prediction spread</div>
+                    <div class="metric-label">Dispersión de predicciones</div>
                 </div>
             </div>
             
-            <!-- Feature Statistics -->
+            <!-- Estadísticas de Features -->
             {f'''
-            <h2 style="margin-top: 40px;">📊 Feature Statistics</h2>
+            <h2 style="margin-top: 40px;">📊 Estadísticas de Features</h2>
             <table>
                 <thead>
                     <tr>
                         <th>Feature</th>
-                        <th>Mean</th>
-                        <th>Std</th>
-                        <th>Min</th>
-                        <th>Max</th>
+                        <th>Media</th>
+                        <th>Desviación</th>
+                        <th>Mín</th>
+                        <th>Máx</th>
                         <th>Drift</th>
                     </tr>
                 </thead>
@@ -1089,10 +1089,10 @@ async def monitoring_dashboard():
                     {_generate_feature_rows(feature_stats)}
                 </tbody>
             </table>
-            ''' if feature_stats else '<p style="color: #999;">No feature statistics available yet.</p>'}
+            ''' if feature_stats else '<p style="color: #999;">No hay estadísticas de features disponibles aún.</p>'}
             
             <p style="margin-top: 40px; color: #999; font-size: 12px;">
-                Auto-refreshes every 30 seconds | Last update: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+                Se actualiza automáticamente cada 30 segundos | Última actualización: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             </p>
         </div>
     </body>
@@ -1117,7 +1117,7 @@ async def reload_model():
         SELECTED_FEATURES = model_info.get('features', SELECTED_FEATURES)
         
         return {
-            "message": "Model reloaded successfully",
+            "message": "Modelo recargado exitosamente",
             "model_version": model_info.get("model_version"),
             "test_rmse": model_metrics.get("test_rmse"),
             "test_r2": model_metrics.get("test_r2"),
@@ -1126,7 +1126,7 @@ async def reload_model():
         
     except Exception as e:
         logger.error(f"❌ Error recargando modelo: {e}")
-        raise HTTPException(status_code=500, detail=f"Reload error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error al recargar: {str(e)}")
 
 
 @app.get("/demo", response_class=HTMLResponse, tags=["Demo"])

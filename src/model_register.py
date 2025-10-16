@@ -1,5 +1,5 @@
 """
-Model Registration Module
+Módulo de Registro de Modelos
 Registra el mejor modelo en MLflow Model Registry y lo promociona a un stage específico.
 
 Este script:

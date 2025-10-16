@@ -1,5 +1,5 @@
 """
-Monitoring module for tracking predictions and performance metrics.
+Módulo de Monitoreo para seguimiento de predicciones y métricas de performance.
 """
 
 import time
@@ -10,14 +10,14 @@ import numpy as np
 
 
 class PredictionMonitor:
-    """Monitor predictions and API performance."""
+    """Monitor predicciones y performance de la API."""
     
     def __init__(self, max_history: int = 1000):
         """
-        Initialize monitor.
+        Inicializar el monitor.
         
         Args:
-            max_history: Maximum number of predictions to keep in history
+            max_history: Número máximo de predicciones para mantener en el historial
         """
         self.start_time = time.time()
         self.prediction_count = 0
@@ -26,7 +26,7 @@ class PredictionMonitor:
         self.features_log = deque(maxlen=max_history)
         self.timestamps = deque(maxlen=max_history)
         
-        # Baseline statistics for drift detection
+        # Estadísticas baseline para detección de drift
         self.baseline_mean: Optional[float] = None
         self.baseline_std: Optional[float] = None
         self.baseline_features: Optional[Dict[str, Dict[str, float]]] = None
@@ -38,12 +38,12 @@ class PredictionMonitor:
         inference_time: float
     ) -> None:
         """
-        Log a prediction for monitoring.
+        Registra una predicción para monitoreo.
         
         Args:
-            features: Input features used for prediction
-            prediction: Model prediction value
-            inference_time: Time taken for inference (in ms)
+            features: Features de entrada usadas para la predicción
+            prediction: Valor de predicción del modelo
+            inference_time: Tiempo de inferencia (en ms)
         """
         self.prediction_count += 1
         self.predictions.append(prediction)
@@ -53,11 +53,11 @@ class PredictionMonitor:
         
     def set_baseline(self, predictions: List[float], features: Optional[Dict[str, List[float]]] = None) -> None:
         """
-        Set baseline statistics for drift detection.
+        Establece estadísticas baseline para detección de drift.
         
         Args:
-            predictions: Historical predictions to use as baseline
-            features: Historical features to use as baseline (dict of feature_name -> list of values)
+            predictions: Predicciones históricas para usar como baseline
+            features: Features históricas para usar como baseline (dict de nombre_feature -> lista de valores)
         """
         if predictions:
             self.baseline_mean = float(np.mean(predictions))
@@ -75,10 +75,10 @@ class PredictionMonitor:
         
     def get_metrics(self) -> Dict:
         """
-        Get monitoring metrics.
+        Obtiene métricas de monitoreo.
         
         Returns:
-            Dictionary with monitoring metrics
+            Diccionario con métricas de monitoreo
         """
         uptime = time.time() - self.start_time
         
@@ -89,7 +89,7 @@ class PredictionMonitor:
             "predictions_per_hour": self.prediction_count / (uptime / 3600) if uptime > 0 else 0,
         }
         
-        # Prediction statistics
+        # Estadísticas de predicciones
         if self.predictions:
             metrics.update({
                 "avg_prediction": float(np.mean(self.predictions)),
@@ -99,7 +99,7 @@ class PredictionMonitor:
                 "median_prediction": float(np.median(self.predictions)),
             })
         
-        # Inference time statistics
+        # Estadísticas de tiempo de inferencia
         if self.inference_times:
             metrics.update({
                 "avg_inference_time_ms": float(np.mean(self.inference_times)),
@@ -109,7 +109,7 @@ class PredictionMonitor:
                 "max_inference_time_ms": float(np.max(self.inference_times)),
             })
         
-        # Recent activity
+        # Actividad reciente
         if self.timestamps:
             metrics["last_prediction_time"] = self.timestamps[-1]
             
@@ -117,10 +117,10 @@ class PredictionMonitor:
     
     def get_detailed_stats(self) -> Dict:
         """
-        Get detailed monitoring statistics.
+        Obtiene estadísticas de monitoreo detalladas.
         
         Returns:
-            Detailed statistics including drift detection
+            Estadísticas detalladas incluyendo detección de drift
         """
         uptime = time.time() - self.start_time
         
@@ -130,7 +130,7 @@ class PredictionMonitor:
             "predictions_per_hour": self.prediction_count / (uptime / 3600) if uptime > 0 else 0,
         }
         
-        # Prediction statistics
+        # Estadísticas de predicciones
         if self.predictions:
             stats["prediction_stats"] = {
                 "mean": float(np.mean(self.predictions)),
@@ -143,7 +143,7 @@ class PredictionMonitor:
             }
             stats["recent_predictions"] = list(self.predictions)[-10:]
         
-        # Inference time statistics
+        # Estadísticas de tiempo de inferencia
         if self.inference_times:
             stats["inference_stats"] = {
                 "mean_ms": float(np.mean(self.inference_times)),
@@ -154,7 +154,7 @@ class PredictionMonitor:
                 "max_ms": float(np.max(self.inference_times)),
             }
         
-        # Last prediction time
+        # Hora de la última predicción
         if self.timestamps:
             stats["last_prediction_time"] = self.timestamps[-1]
             
@@ -162,13 +162,13 @@ class PredictionMonitor:
     
     def detect_drift(self, threshold: float = 2.0) -> Dict:
         """
-        Detect prediction drift compared to baseline.
+        Detecta drift en predicciones comparado con baseline.
         
         Args:
-            threshold: Number of standard deviations for drift detection
+            threshold: Número de desviaciones estándar para detección de drift
             
         Returns:
-            Dictionary with drift detection results
+            Diccionario con resultados de detección de drift
         """
         drift_info = {
             "drift_detected": False,
@@ -194,17 +194,17 @@ class PredictionMonitor:
     
     def get_feature_stats(self) -> Dict:
         """
-        Get statistics for features used in recent predictions.
+        Obtiene estadísticas para features utilizadas en predicciones recientes.
         
         Returns:
-            Dictionary with feature statistics
+            Diccionario con estadísticas de features
         """
         if not self.features_log:
             return {}
         
         feature_stats = {}
         
-        # Convert features_log to dict of lists
+        # Convertir features_log a diccionario de listas
         all_features = {}
         for features in self.features_log:
             for key, value in features.items():
@@ -212,7 +212,7 @@ class PredictionMonitor:
                     all_features[key] = []
                 all_features[key].append(value)
         
-        # Calculate statistics for each feature
+        # Calcular estadísticas para cada feature
         for feature_name, values in all_features.items():
             feature_stats[feature_name] = {
                 "mean": float(np.mean(values)),
@@ -222,7 +222,7 @@ class PredictionMonitor:
                 "median": float(np.median(values)),
             }
             
-            # Add drift info if baseline exists
+            # Agregar info de drift si baseline existe
             if self.baseline_features and feature_name in self.baseline_features:
                 baseline = self.baseline_features[feature_name]
                 current_mean = feature_stats[feature_name]["mean"]

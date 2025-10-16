@@ -55,45 +55,88 @@ def load_params(params_path: str) -> Dict[str, Any]:
 
 
 class DataPreprocessor:
-    """Utility class to load, clean, split and persist data artifacts."""
+    """
+    Clase de utilidad para cargar, limpiar, dividir y persistir artefactos de datos.
+    
+    Proporciona métodos para preprocesar datos de vivienda incluyendo limpieza,
+    división en entrenamiento/prueba, escalado y almacenamiento.
+    """
 
     def __init__(self, params: Optional[Dict[str, Any]] = None):
+        """
+        Inicializa el preprocesador.
+        
+        Args:
+            params: Diccionario de parámetros cargados desde params.yaml
+        """
         self.escalador = StandardScaler()
         self.nombres_caracteristicas: List[str] | None = None
         self.nombre_objetivo: str | None = None
         self.params = params or {}
 
-    # ------------------------------------------------------------------
-    # Public API (English naming used by training & inference services)
-    # ------------------------------------------------------------------
+    # ==================================================================
+    # API Pública (Métodos con nombres en inglés usados por entrenamiento e inferencia)
+    # ==================================================================
     def load_data(self, ruta_datos: Path) -> Optional[pd.DataFrame]:
+        """
+        Carga datos desde un archivo CSV.
+        
+        Args:
+            ruta_datos: Ruta al archivo CSV
+            
+        Returns:
+            DataFrame con los datos cargados o None si hay error
+        """
         try:
-            logger.info(f"📂 Loading data from {ruta_datos}...")
+            logger.info(f"📂 Cargando datos desde {ruta_datos}...")
             df = pd.read_csv(ruta_datos)
-            logger.info(f"✅ Data loaded successfully. Shape: {df.shape}")
-            logger.info(f"📊 Columns: {', '.join(df.columns.tolist())}")
+            logger.info(f"✅ Datos cargados exitosamente. Forma: {df.shape}")
+            logger.info(f"📊 Columnas: {', '.join(df.columns.tolist())}")
             return df
         except FileNotFoundError:
-            logger.error(f"❌ File not found: {ruta_datos}")
+            logger.error(f"❌ Archivo no encontrado: {ruta_datos}")
             return None
         except pd.errors.ParserError as e:
-            logger.error(f"❌ CSV parsing error: {e}")
+            logger.error(f"❌ Error al analizar CSV: {e}")
             return None
         except Exception as e:
-            logger.exception(f"❌ Unexpected error when loading data: {e}")
+            logger.exception(f"❌ Error inesperado cargando datos: {e}")
             return None
 
     def identify_features(self, df: pd.DataFrame, target_column: str | None = None) -> None:
+        """
+        Identifica las columnas de características y la columna objetivo.
+        
+        Args:
+            df: DataFrame con los datos
+            target_column: Nombre de la columna objetivo (si no se proporciona, se usa params.yaml)
+            
+        Raises:
+            ValueError: Si la columna objetivo no existe en el DataFrame
+        """
         target = target_column or self.params.get('data_ingestion', {}).get('target_column', 'MEDV')
         if target not in df.columns:
-            raise ValueError(f"Target column '{target}' not found in dataset")
+            raise ValueError(f"Columna objetivo '{target}' no encontrada en el conjunto de datos")
         self.nombre_objetivo = target
         self.nombres_caracteristicas = [col for col in df.columns if col != target]
-        logger.info(f"🎯 Target column: {self.nombre_objetivo}")
-        logger.info(f"� Feature columns: {', '.join(self.nombres_caracteristicas)}")
+        logger.info(f"🎯 Columna objetivo: {self.nombre_objetivo}")
+        logger.info(f"✨ Columnas de características: {', '.join(self.nombres_caracteristicas)}")
 
     def clean_data(self, df: pd.DataFrame) -> pd.DataFrame:
-        logger.info("🧹 Cleaning dataset...")
+        """
+        Limpia el conjunto de datos.
+        
+        Realiza las siguientes operaciones:
+        - Rellena valores faltantes (NaN) usando moda para variables categóricas y media para numéricas
+        - Opcionalmente elimina filas duplicadas
+        
+        Args:
+            df: DataFrame a limpiar
+            
+        Returns:
+            DataFrame limpio
+        """
+        logger.info("🧹 Limpiando conjunto de datos...")
         preprocessing_params = self.params.get('preprocessing', {})
         remove_duplicates = preprocessing_params.get('remove_duplicates', True)
         
@@ -102,7 +145,7 @@ class DataPreprocessor:
 
         nulos = df.isnull().sum()
         if nulos.any():
-            logger.warning(f"⚠️ Missing values detected:\n{nulos[nulos > 0]}")
+            logger.warning(f"⚠️ Se detectaron valores faltantes:\n{nulos[nulos > 0]}")
             valores_reemplazados = {}
             
             for col in df.columns:
@@ -114,26 +157,26 @@ class DataPreprocessor:
                         mode_val = df[col].mode()[0]
                         df[col] = df[col].fillna(mode_val)
                         valores_reemplazados[col] = {'nulos': num_nulos, 'moda': mode_val}
-                        logger.info(f"   📊 {col}: {num_nulos} nulls filled with mode = {mode_val}")
+                        logger.info(f"   📊 {col}: {num_nulos} valores faltantes rellenados con moda = {mode_val}")
                     
                     # Estrategia 2: Imputar con la MEDIA para el resto (numéricas)
                     else:
                         media = df[col].mean()
                         df[col] = df[col].fillna(media)
                         valores_reemplazados[col] = {'nulos': num_nulos, 'media': round(media, 4)}
-                        logger.info(f"   📊 {col}: {num_nulos} nulls filled with mean = {media:.4f}")
+                        logger.info(f"   📊 {col}: {num_nulos} valores faltantes rellenados con media = {media:.4f}")
             
-            logger.info(f"✅ Total replaced values: {sum(v['nulos'] for v in valores_reemplazados.values())}")
+            logger.info(f"✅ Total de valores reemplazados: {sum(v['nulos'] for v in valores_reemplazados.values())}")
         else:
-            logger.info("✅ No missing values detected")
+            logger.info("✅ No se detectaron valores faltantes")
 
         if remove_duplicates:
             len_original = len(df)
             df = df.drop_duplicates()
             if len(df) < len_original:
-                logger.info(f"🗑️ Removed {len_original - len(df)} duplicated rows")
+                logger.info(f"🗑️ Se eliminaron {len_original - len(df)} filas duplicadas")
             else:
-                logger.info("✅ No duplicated rows found")
+                logger.info("✅ No se encontraron filas duplicadas")
 
         return df
 
@@ -350,27 +393,32 @@ class DataPreprocessor:
             logger.exception(f"❌ Error inesperado durante el preprocesamiento para inferencia: {e}")
             raise
 
-    # ------------------------------------------------------------------
-    # Backwards-compatible aliases (legacy Spanish method names)
-    # ------------------------------------------------------------------
+    # ==================================================================
+    # Métodos de compatibilidad hacia atrás (aliases para nombres de métodos heredados)
+    # ==================================================================
     def cargar_datos(self, ruta_datos: Path) -> Optional[pd.DataFrame]:
+        """Alias para load_data()"""
         return self.load_data(ruta_datos)
 
     def limpiar_datos(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Alias para clean_data()"""
         return self.clean_data(df)
 
     def guardar_preprocesador(self, ruta: Path):
+        """Alias para save_preprocessor()"""
         self.save_preprocessor(ruta)
 
     def cargar_preprocesador(self, ruta: Path):
+        """Alias para load_preprocessor()"""
         self.load_preprocessor(ruta)
 
     def procesar_para_inferencia(self, datos_entrada: Dict[str, Any]) -> np.ndarray:
+        """Alias para preprocess_for_inference()"""
         return self.preprocess_for_inference(datos_entrada)
 
-    # ------------------------------------------------------------------
-    # English method names expected by training/inference modules
-    # ------------------------------------------------------------------
+    # ==================================================================
+    # Métodos con nombres en inglés (esperados por módulos de entrenamiento e inferencia)
+    # ==================================================================
     def split_features_target(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series]:
         if self.nombre_objetivo is None:
             self.identify_features(df)
@@ -420,26 +468,50 @@ class DataPreprocessor:
         return X_train_scaled, X_test_scaled
 
     def save_preprocessor(self, ruta: Path) -> None:
-        logger.info(f"💾 Saving StandardScaler to {ruta}...")
+        """
+        Guarda el StandardScaler entrenado a un archivo.
+        
+        Args:
+            ruta: Ruta al archivo donde guardar el escalador
+        """
+        logger.info(f"💾 Guardando StandardScaler en {ruta}...")
         estado = {
             "escalador": self.escalador,
             "nombres_caracteristicas": self.nombres_caracteristicas,
             "nombre_objetivo": self.nombre_objetivo,
         }
         joblib.dump(estado, ruta)
-        logger.info("✅ StandardScaler saved")
+        logger.info("✅ StandardScaler guardado")
 
     def load_preprocessor(self, ruta: Path) -> None:
-        logger.info(f"📂 Loading StandardScaler from {ruta}...")
+        """
+        Carga un StandardScaler previamente guardado.
+        
+        Args:
+            ruta: Ruta al archivo del escalador
+        """
+        logger.info(f"📂 Cargando StandardScaler desde {ruta}...")
         estado = joblib.load(ruta)
         self.escalador = estado["escalador"]
         self.nombres_caracteristicas = estado["nombres_caracteristicas"]
         self.nombre_objetivo = estado["nombre_objetivo"]
-        logger.info("✅ StandardScaler loaded")
+        logger.info("✅ StandardScaler cargado")
 
     def preprocess_for_inference(self, datos_entrada: Dict[str, Any]) -> np.ndarray:
+        """
+        Preprocesa datos para inferencia usando el escalador cargado.
+        
+        Args:
+            datos_entrada: Diccionario con las características
+            
+        Returns:
+            Array numpy con los datos escalados
+            
+        Raises:
+            ValueError: Si los nombres de características no están cargados
+        """
         if not self.nombres_caracteristicas:
-            raise ValueError("Feature names are not loaded; load the preprocessor first")
+            raise ValueError("Los nombres de características no están cargados; carga el preprocesador primero")
         df = pd.DataFrame([datos_entrada])
         df = df[self.nombres_caracteristicas]
         return self.escalador.transform(df)

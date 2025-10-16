@@ -1,14 +1,15 @@
 """
-Model Training Module with XGBoost, MLflow and SHAP
-Trains 3 XGBoost experiments and selects the best model by RMSE:
-1. Hyperparameter Tuning (RandomizedSearchCV)
-2. Important Features (SHAP selection + default parameters)
-3. Feature Selection + Optimization (SHAP + best hyperparameters)
+Módulo de Entrenamiento de Modelos con XGBoost, MLflow y SHAP
 
-🔥 MLFLOW AUTOLOGGING APPROACH:
-- Todo se guarda automáticamente en mlruns/
-- No hay carpetas mlartifacts/ separadas
-- Modelos, métricas, parámetros y artifacts en un solo lugar
+Entrena 3 experimentos de XGBoost y selecciona el mejor modelo según RMSE:
+1. Ajuste de Hiperparámetros (RandomizedSearchCV con todas las características)
+2. Características Importantes (selección SHAP + parámetros por defecto)
+3. Optimización con Selección de Características (SHAP + mejores hiperparámetros)
+
+🔥 MLFLOW AUTOLOGGING HABILITADO:
+   - Todo se guarda automáticamente en mlruns/
+   - Modelos, métricas, parámetros y artefactos en un solo lugar
+   - El mejor modelo se exporta automáticamente para la API
 """
 
 import logging
@@ -36,7 +37,9 @@ import shap
 import tempfile
 import os
 
-# --- Configuración del Logging ---
+# ============================================================================
+# CONFIGURACIÓN DE LOGGING
+# ============================================================================
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -45,8 +48,23 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# ============================================================================
+# FUNCIONES DE UTILIDAD
+# ============================================================================
+
 def load_params(params_path: str = "params.yaml") -> Dict[str, Any]:
-    """Carga parámetros desde archivo YAML."""
+    """
+    Carga parámetros desde archivo YAML.
+    
+    Args:
+        params_path: Ruta al archivo params.yaml
+        
+    Returns:
+        Diccionario con los parámetros cargados
+        
+    Raises:
+        Exception: Si hay error al leer el archivo YAML
+    """
     try:
         with open(params_path, 'r') as file:
             params = yaml.safe_load(file)
@@ -58,7 +76,18 @@ def load_params(params_path: str = "params.yaml") -> Dict[str, Any]:
 
 
 def load_data(data_dir: Path) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Carga datos de entrenamiento y prueba."""
+    """
+    Carga datos de entrenamiento y prueba.
+    
+    Args:
+        data_dir: Directorio donde están los archivos train.csv y test.csv
+        
+    Returns:
+        Tupla (train_df, test_df) con los datos cargados
+        
+    Raises:
+        Exception: Si hay error al cargar los archivos
+    """
     try:
         train_path = data_dir / 'train.csv'
         test_path = data_dir / 'test.csv'
@@ -66,9 +95,9 @@ def load_data(data_dir: Path) -> Tuple[pd.DataFrame, pd.DataFrame]:
         train_df = pd.read_csv(train_path)
         test_df = pd.read_csv(test_path)
         
-        logger.info(f'✅ Datos cargados:')
-        logger.info(f'   - Train: {train_df.shape}')
-        logger.info(f'   - Test: {test_df.shape}')
+        logger.info(f'✅ Datos cargados exitosamente:')
+        logger.info(f'   - Entrenamiento: {train_df.shape}')
+        logger.info(f'   - Prueba: {test_df.shape}')
         
         return train_df, test_df
     except Exception as e:
@@ -81,20 +110,33 @@ def prepare_features_target(
     test_df: pd.DataFrame,
     target_column: str
 ) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series]:
-    """Separa features y target."""
+    """
+    Separa las características del objetivo (target).
+    
+    Args:
+        train_df: DataFrame de entrenamiento
+        test_df: DataFrame de prueba
+        target_column: Nombre de la columna objetivo
+        
+    Returns:
+        Tupla (X_train, y_train, X_test, y_test)
+        
+    Raises:
+        Exception: Si hay error al separar características y objetivo
+    """
     try:
         X_train = train_df.drop(columns=[target_column])
         y_train = train_df[target_column]
         X_test = test_df.drop(columns=[target_column])
         y_test = test_df[target_column]
         
-        logger.info(f'✅ Features y target preparados:')
-        logger.info(f'   - Features: {list(X_train.columns)}')
-        logger.info(f'   - Target: {target_column}')
+        logger.info(f'✅ Características y objetivo preparados:')
+        logger.info(f'   - Características: {list(X_train.columns)}')
+        logger.info(f'   - Objetivo: {target_column}')
         
         return X_train, y_train, X_test, y_test
     except Exception as e:
-        logger.error(f'❌ Error preparando features: {e}')
+        logger.error(f'❌ Error preparando características: {e}')
         raise
 
 
@@ -103,7 +145,19 @@ def calculate_metrics(
     y_pred: np.ndarray,
     prefix: str = ''
 ) -> Dict[str, float]:
-    """Calcula métricas de regresión."""
+    """
+    Calcula métricas de regresión.
+    
+    Calcula RMSE, MAE, R², y MAPE para evaluar el desempeño del modelo.
+    
+    Args:
+        y_true: Valores reales
+        y_pred: Valores predichos
+        prefix: Prefijo para los nombres de las métricas (ej: 'train_', 'test_')
+        
+    Returns:
+        Diccionario con las métricas calculadas
+    """
     rmse = np.sqrt(mean_squared_error(y_true, y_pred))
     mae = mean_absolute_error(y_true, y_pred)
     r2 = r2_score(y_true, y_pred)
@@ -191,38 +245,48 @@ def calculate_shap_importance(
 
 
 def log_feature_importance(model: XGBRegressor, feature_names: List[str], run_name: str):
-    """Analiza y registra importancia de features con visualizaciones."""
+    """
+    Analiza y registra la importancia de características con visualizaciones.
+    
+    Calcula importancia por tipo: weight (número de veces usado), gain (mejora de pérdida),
+    cover (número de observaciones afectadas).
+    
+    Args:
+        model: Modelo XGBoost entrenado
+        feature_names: Lista de nombres de características
+        run_name: Nombre del experimento para identificar artefactos
+    """
     importance_types = ["weight", "gain", "cover"]
     
     # Usar directorio temporal para no dejar archivos sueltos
     with tempfile.TemporaryDirectory() as tmpdir:
         for imp_type in importance_types:
             try:
-                # Obtener importancias
+                # Obtener importancias del booster
                 booster = model.get_booster()
                 importance_dict = booster.get_score(importance_type=imp_type)
                 
                 if not importance_dict:
                     continue
                 
-                # Ordenar por importancia
+                # Ordenar por importancia (descendente)
                 sorted_features = sorted(
                     importance_dict.items(),
                     key=lambda x: x[1],
                     reverse=True
                 )
                 
-                # Crear visualización
-                features, scores = zip(*sorted_features[:13])  # Top 13 (todas las features)
+                # Crear visualización (Top 13 = todas las características)
+                features, scores = zip(*sorted_features[:13])
                 
                 plt.figure(figsize=(10, 6))
                 sns.barplot(x=list(scores), y=list(features))
-                plt.title(f'Feature Importance ({imp_type.title()}) - {run_name}')
-                plt.xlabel('Importance Score')
-                plt.ylabel('Features')
+                plt.title(f'Importancia de Características ({imp_type.title()}) - {run_name}')
+                plt.xlabel('Puntuación de Importancia')
+                plt.ylabel('Características')
                 plt.tight_layout()
                 
-                # Guardar plot en directorio temporal
+                # Guardar gráfico en directorio temporal
                 plot_filename = os.path.join(tmpdir, f"feature_importance_{imp_type}_{run_name.replace(' ', '_')}.png")
                 plt.savefig(plot_filename, dpi=300, bbox_inches='tight')
                 mlflow.log_artifact(plot_filename)
@@ -234,14 +298,14 @@ def log_feature_importance(model: XGBRegressor, feature_names: List[str], run_na
                     json.dump(importance_dict, f, indent=2)
                 mlflow.log_artifact(json_filename)
                 
-                logger.info(f"   ✅ Feature importance ({imp_type}) registrada en MLflow")
+                logger.info(f"   ✅ Importancia de características ({imp_type}) registrada en MLflow")
                 
             except Exception as e:
-                logger.warning(f"   ⚠️ No se pudo registrar feature importance ({imp_type}): {e}")
+                logger.warning(f"   ⚠️ No se pudo registrar importancia de características ({imp_type}): {e}")
 
 
 # ============================================================================
-# EXPERIMENTO 1: Hyperparameter Tuning with RandomizedSearchCV
+# EXPERIMENTO 1: Ajuste de Hiperparámetros con RandomizedSearchCV
 # ============================================================================
 def train_tuned_model(
     X_train: pd.DataFrame, 
@@ -251,14 +315,22 @@ def train_tuned_model(
     save_model_info: bool = True
 ) -> Tuple[XGBRegressor, Dict[str, float], Dict[str, Any]]:
     """
-    Experimento 1: Hyperparameter Tuning con RandomizedSearchCV.
+    Experimento 1: Ajuste de Hiperparámetros con RandomizedSearchCV.
+    
     🔥 USA MLflow autologging - guarda automáticamente modelo y parámetros.
     
     Args:
+        X_train: Características de entrenamiento
+        y_train: Objetivo de entrenamiento
+        X_test: Características de prueba
+        y_test: Objetivo de prueba
         save_model_info: Si es True, guarda model_info.json con run_id y model_path
+        
+    Returns:
+        Tupla (modelo_entrenado, métricas, mejores_parámetros)
     """
     logger.info("\n" + "="*70)
-    logger.info("� EXPERIMENTO 1: Hyperparameter Tuning")
+    logger.info("🔍 EXPERIMENTO 1: Ajuste de Hiperparámetros")
     logger.info("="*70)
     
     # Definir distribuciones de hiperparámetros
@@ -345,7 +417,8 @@ def train_tuned_model(
 
 
 # ============================================================================
-# EXPERIMENTO 2: Important Features Only (Default Params)
+# ============================================================================
+# EXPERIMENTO 2: Características Importantes Solamente (Parámetros por Defecto)
 # ============================================================================
 def train_with_important_features(
     X_train: pd.DataFrame,
@@ -354,11 +427,21 @@ def train_with_important_features(
     y_test: pd.Series
 ) -> Tuple[XGBRegressor, Dict[str, float], List[str]]:
     """
-    Experimento 2: Modelo con solo las features más importantes usando SHAP (parámetros por defecto).
+    Experimento 2: Modelo con solo las características más importantes usando SHAP (parámetros por defecto).
+    
     🔥 Usa MLflow autologging - TODO se guarda automáticamente en mlruns/
+    
+    Args:
+        X_train: Características de entrenamiento
+        y_train: Objetivo de entrenamiento
+        X_test: Características de prueba
+        y_test: Objetivo de prueba
+        
+    Returns:
+        Tupla (modelo_entrenado, métricas, características_seleccionadas)
     """
     logger.info("\n" + "="*70)
-    logger.info("🎯 EXPERIMENTO 2: IMPORTANT FEATURES (SHAP + Default Params)")
+    logger.info("🎯 EXPERIMENTO 2: CARACTERÍSTICAS IMPORTANTES (SHAP + Parámetros por Defecto)")
     logger.info("="*70)
     
     with mlflow.start_run(run_name="02_important_features_shap"):
@@ -465,7 +548,7 @@ def train_with_important_features(
 
 
 # ============================================================================
-# EXPERIMENTO 3: Hyperparameter Tuning on Selected Features
+# EXPERIMENTO 3: Ajuste de Hiperparámetros en Características Seleccionadas
 # ============================================================================
 def train_with_feature_selection(
     X_train: pd.DataFrame,
@@ -475,11 +558,25 @@ def train_with_feature_selection(
     selected_features: List[str]
 ) -> Tuple[XGBRegressor, Dict[str, float], Dict[str, Any]]:
     """
-    Experimento 3: Búsqueda de hiperparámetros en features seleccionadas del Experimento 2.
-    🔥 Usa MLflow autologging - TODO se guarda automáticamente en mlruns/
+    Experimento 3: Búsqueda de hiperparámetros en características seleccionadas del Experimento 2.
+    
+    Aplica RandomizedSearchCV usando solo las características más importantes del Experimento 2.
+    
+    Args:
+        X_train: Características de entrenamiento
+        y_train: Objetivo de entrenamiento
+        X_test: Características de prueba
+        y_test: Objetivo de prueba
+        selected_features: Lista de características seleccionadas en Experimento 2
+        
+    Returns:
+        Tupla (modelo_entrenado, métricas, mejores_parámetros)
+        
+    Notas:
+        🔥 Usa MLflow autologging - TODO se guarda automáticamente en mlruns/
     """
     logger.info("\n" + "="*70)
-    logger.info("🎯 EXPERIMENTO 3: HYPERPARAMETER TUNING ON SELECTED FEATURES")
+    logger.info("⚙️ EXPERIMENTO 3: AJUSTE DE HIPERPARÁMETROS EN CARACTERÍSTICAS SELECCIONADAS")
     logger.info("="*70)
     
     with mlflow.start_run(run_name="03_tuning_on_selected_features"):

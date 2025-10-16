@@ -79,8 +79,7 @@ front/public/mlruns/
 logs/
 
 # Env files
-.env
-.env.local
+
 
 # Temporary files
 tmp/
