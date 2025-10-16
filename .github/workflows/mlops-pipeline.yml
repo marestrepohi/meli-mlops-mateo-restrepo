@@ -216,10 +216,47 @@ jobs:
         docker build -t mlops-api:test --file Dockerfile .
         echo "✅ API image built successfully"
     
+    - name: Verify model files before starting API
+      run: |
+        echo "🔍 Verifying model files exist and are accessible..."
+        echo "=== Model Directory Structure ==="
+        find models/ -type f 2>/dev/null || echo "models/ directory not found"
+        echo ""
+        echo "=== Checking required files ==="
+        
+        # Check model.pkl
+        if [ -f "models/production/latest/model.pkl" ]; then
+          echo "✅ model.pkl found"
+          ls -lh models/production/latest/model.pkl
+        else
+          echo "❌ model.pkl NOT FOUND"
+          echo "Contents of models/:"
+          find models/ -type f -name "*.pkl" 2>/dev/null || echo "No .pkl files found"
+          exit 1
+        fi
+        
+        # Check scaler.pkl
+        if [ -f "models/production/latest/scaler.pkl" ]; then
+          echo "✅ scaler.pkl found"
+          ls -lh models/production/latest/scaler.pkl
+        else
+          echo "❌ scaler.pkl NOT FOUND"
+          exit 1
+        fi
+        
+        # Check metadata.json
+        if [ -f "models/production/latest/metadata.json" ]; then
+          echo "✅ metadata.json found"
+          cat models/production/latest/metadata.json | jq '.' || cat models/production/latest/metadata.json
+        else
+          echo "❌ metadata.json NOT FOUND"
+          exit 1
+        fi
+    
     - name: Start API container
       run: |
         echo "🚀 Starting API container..."
-        echo "📂 Mounting models from: $(pwd)/models/production"
+        echo "📂 Mounting models from: $(pwd)/models"
         docker run -d \
           --name mlops-api-test \
           -p 8000:8000 \
@@ -228,19 +265,24 @@ jobs:
           -e PYTHONUNBUFFERED=1 \
           -e API_HOST=0.0.0.0 \
           -e API_PORT=8000 \
-          -e MODEL_PATH=models/production \
           -e ENABLE_MONITORING=true \
           mlops-api:test \
           uvicorn api.main:app --host 0.0.0.0 --port 8000
         
-        echo "⏳ Waiting 20 seconds for API to start..."
-        sleep 20
+        echo "⏳ Waiting 30 seconds for API to start..."
+        sleep 30
+        
+        echo "🔍 Checking if API process is running..."
+        docker exec mlops-api-test ps aux | grep uvicorn || echo "Uvicorn process not found"
     
-    - name: Check API container logs
+    - name: Check API container status
       if: always()
       run: |
+        echo "📊 Container Status:"
+        docker ps -a | grep mlops-api-test || echo "Container not found"
+        echo ""
         echo "📋 API Container Logs:"
-        docker logs mlops-api-test
+        docker logs mlops-api-test 2>&1 | tail -100
     
     - name: Test API health endpoint
       run: |
@@ -264,13 +306,35 @@ jobs:
     - name: Test model info endpoint
       run: |
         echo "🧪 Testing /model/info endpoint..."
-        RESPONSE=$(curl -s http://localhost:8000/model/info)
-        echo "$RESPONSE" | jq '.' || echo "$RESPONSE"
+        RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" http://localhost:8000/model/info)
+        HTTP_CODE=$(echo "$RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
+        BODY=$(echo "$RESPONSE" | grep -v "HTTP_CODE:")
         
-        if echo "$RESPONSE" | grep -q "model_path"; then
-          echo "✅ Model info endpoint working correctly"
+        echo "HTTP Status: $HTTP_CODE"
+        echo "Response Body:"
+        echo "$BODY"
+        
+        if [ "$HTTP_CODE" != "200" ]; then
+          echo "❌ HTTP Status is not 200"
+          echo "Container logs:"
+          docker logs mlops-api-test 2>&1 | tail -50
+          exit 1
+        fi
+        
+        # Try to parse as JSON
+        if echo "$BODY" | jq '.' > /dev/null 2>&1; then
+          echo "✅ Valid JSON response"
+          echo "$BODY" | jq '.'
+          
+          if echo "$BODY" | grep -q "model_path"; then
+            echo "✅ Model info endpoint working correctly"
+          else
+            echo "❌ Response missing 'model_path' field"
+            exit 1
+          fi
         else
-          echo "❌ Model info response invalid"
+          echo "❌ Response is not valid JSON"
+          echo "Raw response: $BODY"
           exit 1
         fi
     
