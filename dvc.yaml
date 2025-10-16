@@ -43,8 +43,8 @@ stages:
   # ===================================================================
   # Stage 3: Model Training
   # Entrenamiento de 3 experimentos XGBoost con SHAP + MLflow
-  # 🔥 USA MLFLOW AUTOLOGGING - Todo se guarda en mlruns/
-  # 🔥 EXPORTA AUTOMÁTICAMENTE a models/production/latest/
+  # USA MLFLOW AUTOLOGGING - Todo se guarda en mlruns/
+  # EXPORTA AUTOMÁTICAMENTE a models/production/latest/
   # Experimentos:
   #   1. Hyperparameter Tuning (todas las features)
   #   2. Important Features (SHAP percentil 20 + default params)

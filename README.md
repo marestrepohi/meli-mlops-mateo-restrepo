@@ -38,54 +38,6 @@ Este proyecto implementa una **solución end-to-end de Machine Learning Operatio
 
 ---
 
-## ⚙️ Configuración Inicial (Archivo `.env`)
-
-Antes de ejecutar el proyecto, es **necesario configurar las credenciales de Kaggle** para la descarga automática de datos.
-
-### Opción A: Crear archivo `.env` manualmente
-
-Crea un archivo `.env` en la raíz del proyecto con el siguiente contenido:
-
-```bash
-# Credenciales de Kaggle (REQUERIDAS para data ingestion)
-KAGGLE_USERNAME=tu_usuario_kaggle
-KAGGLE_KEY=tu_api_key_kaggle
-
-# Configuración MLflow
-MLFLOW_TRACKING_URI=./mlruns
-MLFLOW_EXPERIMENT_NAME=housing-price-prediction
-
-# Configuración API
-API_HOST=0.0.0.0
-API_PORT=8000
-ENABLE_MONITORING=true
-LOG_LEVEL=INFO
-```
-
-### Opción B: Usar el template incluido
-
-```bash
-cp .env.example .env
-# Luego edita .env con tus credenciales
-```
-
-### 🔑 ¿Cómo obtener credenciales de Kaggle?
-
-1. Inicia sesión en [kaggle.com](https://www.kaggle.com)
-2. Ve a tu perfil → **Account** → **API** → **Create New API Token**
-3. Se descargará un archivo `kaggle.json` con tus credenciales:
-   ```json
-   {
-     "username": "tu_usuario",
-     "key": "abc123def456..."
-   }
-   ```
-4. Copia `username` y `key` a tu archivo `.env`
-
-> **Nota**: Si usas Docker con `make start`, el archivo `.env` se crea automáticamente con valores por defecto. Solo necesitas configurarlo manualmente si ejecutas el pipeline localmente.
-
----
-
 ## 🚀 Inicio Rápido - 2 Opciones
 
 ### Opción 1️⃣: Con Docker - Makefile (RECOMENDADO - Más Fácil)
@@ -140,24 +92,21 @@ git clone https://github.com/marestrepohi/meli-mlops-mateo-restrepo.git
 cd meli-mlops-mateo-restrepo
 
 # 2. Crear entorno virtual
-python -m venv venv
+python3 -m venv venv
 source venv/bin/activate           # En Mac/Linux
-# o
-venv\Scripts\activate              # En Windows
+
 
 # 3. Instalar dependencias Python
 pip install -r requirements.txt
 
 # 4. Ejecutar pipeline DVC (data + training)
+dvc init               # Solo la primera vez
 dvc repro
 
-# 5. Registrar modelo en producción
-python src/model_register.py --stage Production
-
-# 6. En terminal 1: Iniciar API
+# 5. En terminal 1: Iniciar API
 uvicorn api.main:app --reload --port 8000
 
-# 7. En terminal 2: Iniciar MLflow UI
+# 6. En terminal 2: Iniciar MLflow UI
 mlflow ui --port 5000
 
 # 8. En terminal 3: Iniciar Frontend

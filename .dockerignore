@@ -69,10 +69,6 @@ mlruns/
 .dvc/tmp/
 .dvc/
 
-# Frontend synced folders (mounted as volumes, not copied)
-front/public/data/
-front/public/models/
-front/public/mlruns/
 
 # Logs
 *.log

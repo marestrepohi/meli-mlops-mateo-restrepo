@@ -4,9 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "build:dev": "vite build --mode development",
+    "dev": "npm run sync && vite",
+    "dev:nosync": "vite",
+    "sync": "node scripts/sync-artifacts.js",
+    "build": "npm run sync && vite build",
+    "build:nosync": "vite build",
+    "build:dev": "npm run sync && vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview"
   },

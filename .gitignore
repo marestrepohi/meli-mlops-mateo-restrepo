@@ -91,13 +91,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-# Frontend - Enlaces simbólicos a datos reales
-front/public/data
-front/public/mlruns
-front/public/models
-
-dvc.lock
-*.dvc.lock
-*.dvcignore
-.dvcignore
