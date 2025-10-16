@@ -63,13 +63,17 @@ jobs:
         echo "✅ Image built"
     
     - name: Run DVC Pipeline in container
+      env:
+        KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+        KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
       run: |
         echo "🚀 Step 1: Running DVC Pipeline..."
         docker run --rm \
           -v $(pwd)/data:/app/data \
           -v $(pwd)/models:/app/models \
           -v $(pwd)/mlruns:/app/mlruns \
-          --env-file .env \
+          -e KAGGLE_USERNAME="${KAGGLE_USERNAME}" \
+          -e KAGGLE_KEY="${KAGGLE_KEY}" \
           mlops:test \
           sh -c "dvc init --no-scm --force && dvc repro --force"
         
