@@ -218,7 +218,7 @@ jobs:
     - name: Start services with Docker Compose
       run: |
         echo "🚀 Starting Docker Compose services..."
-        docker-compose up -d --build
+        docker compose up -d --build
     
     - name: Wait for services to be ready
       run: |
@@ -226,16 +226,16 @@ jobs:
         sleep 30
         
         echo "📊 Service status:"
-        docker-compose ps
+        docker compose ps
     
     - name: Check service logs
       if: always()
       run: |
         echo "=== MLflow Logs ==="
-        docker-compose logs mlflow
+        docker compose logs mlflow
         echo ""
         echo "=== API Logs ==="
-        docker-compose logs api
+        docker compose logs api
     
     - name: Run API health checks
       run: |
@@ -303,4 +303,4 @@ jobs:
       if: always()
       run: |
         echo "🛑 Stopping services..."
-        docker-compose down -v
+        docker compose down -v
