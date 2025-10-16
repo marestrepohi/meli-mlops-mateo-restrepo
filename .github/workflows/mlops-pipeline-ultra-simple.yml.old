@@ -1,4 +1,4 @@
-name: MLOps Pipeline - Ultra Simplified
+name: MLOps Pipeline - Ultra Simplificado
 
 on:
   push:
@@ -12,41 +12,41 @@ env:
 
 jobs:
   # ==============================================================================
-  # JOB 1: Code Quality
+  # TRABAJO 1: Calidad de Código
   # ==============================================================================
   quality:
-    name: Code Quality
+    name: Calidad de Código
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout code
+    - name: Descargar código
       uses: actions/checkout@v4
     
-    - name: Set up Python
+    - name: Configurar Python
       uses: actions/setup-python@v5
       with:
         python-version: ${{ env.PYTHON_VERSION }}
         cache: 'pip'
     
-    - name: Run linting
+    - name: Ejecutar linting
       continue-on-error: true
       run: |
         pip install flake8
         flake8 src/ api/ --max-line-length=100 --ignore=E203,W503 --statistics || true
 
   # ==============================================================================
-  # JOB 2: DVC Pipeline + API (Single Container)
+  # TRABAJO 2: Pipeline DVC + API (Contenedor Único)
   # ==============================================================================
   train-and-test:
-    name: Train & Test API
+    name: Entrenar y Probar API
     runs-on: ubuntu-latest
     needs: [quality]
     
     steps:
-    - name: Checkout code
+    - name: Descargar código
       uses: actions/checkout@v4
     
-    - name: Create .env file
+    - name: Crear archivo .env
       env:
         KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
         KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
@@ -56,15 +56,15 @@ jobs:
         KAGGLE_KEY=$KAGGLE_KEY
         EOF
     
-    - name: Build Docker image
+    - name: Construir imagen Docker
       run: |
-        echo "🐳 Building Docker image..."
+        echo "🐳 Construyendo imagen Docker..."
         docker build -t mlops:test -f Dockerfile .
-        echo "✅ Image built"
+        echo "✅ Imagen construida"
     
-    - name: Run DVC Pipeline in container
+    - name: Ejecutar Pipeline DVC en contenedor
       run: |
-        echo "🚀 Step 1: Running DVC Pipeline..."
+        echo "🚀 Paso 1: Ejecutando Pipeline DVC..."
         docker run --rm \
           -v $(pwd)/data:/app/data \
           -v $(pwd)/models:/app/models \
@@ -78,19 +78,19 @@ jobs:
                  dvc repro --force"
         
         echo ""
-        echo "📦 Artifacts generated:"
-        ls -lh models/production/latest/ 2>/dev/null || echo "Models not found"
+        echo "📦 Artefactos generados:"
+        ls -lh models/production/latest/ 2>/dev/null || echo "Modelos no encontrados"
     
-    - name: Verify model files
+    - name: Verificar archivos del modelo
       run: |
-        echo "🔍 Verifying model files..."
+        echo "🔍 Verificando archivos del modelo..."
         test -f models/production/latest/model.pkl && echo "✅ model.pkl" || exit 1
         test -f models/production/latest/scaler.pkl && echo "✅ scaler.pkl" || exit 1
         test -f models/production/latest/metadata.json && echo "✅ metadata.json" || exit 1
     
-    - name: Start API and test
+    - name: Iniciar API y probar
       run: |
-        echo "🚀 Step 2: Starting API..."
+        echo "🚀 Paso 2: Iniciando API..."
         docker run -d \
           --name api-test \
           -p 8000:8000 \
@@ -99,18 +99,18 @@ jobs:
           mlops:test \
           uvicorn api.main:app --host 0.0.0.0 --port 8000
         
-        echo "⏳ Waiting 30s..."
+        echo "⏳ Esperando 30s..."
         sleep 30
     
-    - name: Check API logs
+    - name: Revisar logs de API
       if: always()
       run: |
-        echo "📋 API Logs:"
+        echo "📋 Logs de API:"
         docker logs api-test 2>&1 | tail -50
     
-    - name: Test prediction endpoint
+    - name: Probar endpoint de predicción
       run: |
-        echo "🧪 Testing /predict..."
+        echo "🧪 Probando /predict..."
         
         RESPONSE=$(curl -s -w "\nHTTP:%{http_code}" -X POST http://localhost:8000/predict \
           -H "Content-Type: application/json" \
@@ -119,35 +119,35 @@ jobs:
         HTTP_CODE=$(echo "$RESPONSE" | grep "HTTP:" | cut -d: -f2)
         BODY=$(echo "$RESPONSE" | grep -v "HTTP:")
         
-        echo "Status: $HTTP_CODE"
-        echo "Response: $BODY"
+        echo "Estado: $HTTP_CODE"
+        echo "Respuesta: $BODY"
         
         if [ "$HTTP_CODE" != "200" ]; then
-          echo "❌ FAILED"
+          echo "❌ FALLÓ"
           docker logs api-test
           exit 1
         fi
         
         if echo "$BODY" | jq -e '.prediction' > /dev/null 2>&1; then
           PRICE=$(echo "$BODY" | jq -r '.prediction')
-          echo "✅ SUCCESS - Predicted: \$${PRICE}K"
+          echo "✅ ÉXITO - Predicción: \$${PRICE}K"
         else
-          echo "❌ No prediction in response"
+          echo "❌ Sin predicción en la respuesta"
           exit 1
         fi
     
-    - name: Summary
+    - name: Resumen
       if: always()
       run: |
-        echo "## 🚀 Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+        echo "## 🚀 Resumen del Pipeline" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "✅ DVC Pipeline: Completed" >> $GITHUB_STEP_SUMMARY
-        echo "✅ API Prediction: Working" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Pipeline DVC: Completado" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Predicción de API: Funcionando" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-        echo "Author: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+        echo "Autor: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
     
-    - name: Cleanup
+    - name: Limpiar
       if: always()
       run: |
         docker stop api-test || true

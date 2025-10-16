@@ -1,6 +1,6 @@
 # ═══════════════════════════════════════════════════════════════════
-# Makefile for MLOps Housing Project
-# Docker Compose Management
+# Makefile para Proyecto MLOps de Viviendas
+# Gestión de Docker Compose
 # ═══════════════════════════════════════════════════════════════════
 
 .PHONY: help build up down restart logs logs-api logs-mlflow logs-frontend shell test clean ps urls start
@@ -12,37 +12,37 @@ MLFLOW_CONTAINER = mlops-housing-mlflow
 FRONTEND_CONTAINER = mlops-housing-frontend
 
 # ───────────────────────────────────────────────────────────────────
-# Help
+# Ayuda
 # ───────────────────────────────────────────────────────────────────
 help:
 	@echo "════════════════════════════════════════════════════════════"
-	@echo "  MLOps Housing Project - Docker Compose Commands"
+	@echo "  Proyecto MLOps de Viviendas - Comandos Docker Compose"
 	@echo "════════════════════════════════════════════════════════════"
 	@echo ""
-	@echo "🚀 Main Commands:"
-	@echo "  make start          - 🌟 Build + Start all services (RECOMMENDED)"
-	@echo "  make build          - Build all Docker images"
-	@echo "  make up             - Start all services (API, MLflow, Frontend)"
-	@echo "  make down           - Stop and remove all containers"
-	@echo "  make restart        - Restart all services"
+	@echo "🚀 Comandos Principales:"
+	@echo "  make start          - 🌟 Construir + Iniciar todos los servicios (RECOMENDADO)"
+	@echo "  make build          - Construir todas las imágenes Docker"
+	@echo "  make up             - Iniciar todos los servicios (API, MLflow, Frontend)"
+	@echo "  make down           - Detener y remover todos los contenedores"
+	@echo "  make restart        - Reiniciar todos los servicios"
 	@echo ""
-	@echo "📋 Monitoring:"
-	@echo "  make logs           - Show all service logs"
-	@echo "  make logs-api       - Show only API logs"
-	@echo "  make logs-mlflow    - Show only MLflow logs"
-	@echo "  make logs-frontend  - Show only Frontend logs"
-	@echo "  make ps             - Show container status"
+	@echo "📋 Monitoreo:"
+	@echo "  make logs           - Mostrar logs de todos los servicios"
+	@echo "  make logs-api       - Mostrar solo logs de API"
+	@echo "  make logs-mlflow    - Mostrar solo logs de MLflow"
+	@echo "  make logs-frontend  - Mostrar solo logs de Frontend"
+	@echo "  make ps             - Mostrar estado de contenedores"
 	@echo ""
-	@echo "🔧 Operations:"
-	@echo "  make shell                - Open bash in backend container"
-	@echo "  make test                 - Test all services health"
-	@echo "  make dvc-repro            - Run DVC pipeline"
-	@echo "  make register-model       - Register best model to Production"
-	@echo "  make register-model-staging - Register best model to Staging"
-	@echo "  make clean                - Remove all containers and volumes"
-	@echo "  make urls                 - Show service URLs"
+	@echo "🔧 Operaciones:"
+	@echo "  make shell                - Abrir bash en contenedor de backend"
+	@echo "  make test                 - Probar salud de todos los servicios"
+	@echo "  make dvc-repro            - Ejecutar pipeline DVC"
+	@echo "  make register-model       - Registrar mejor modelo en Producción"
+	@echo "  make register-model-staging - Registrar mejor modelo en Staging"
+	@echo "  make clean                - Remover todos los contenedores y volúmenes"
+	@echo "  make urls                 - Mostrar URLs de servicios"
 	@echo ""
-	@echo "📡 Services (after 'make up'):"
+	@echo "📡 Servicios (después de 'make up'):"
 	@echo "  - FastAPI:    http://localhost:8000"
 	@echo "  - MLflow UI:  http://localhost:5000"
 	@echo "  - Frontend:   http://localhost:8080"
@@ -50,152 +50,152 @@ help:
 	@echo "════════════════════════════════════════════════════════════"
 
 # ───────────────────────────────────────────────────────────────────
-# Build & Run
+# Construir e Iniciar
 # ───────────────────────────────────────────────────────────────────
 build:
-	@echo "🏗️  Building Docker images..."
+	@echo "🏗️  Construyendo imágenes Docker..."
 	$(DOCKER_COMPOSE) build
-	@echo "✅ Build complete!"
+	@echo "✅ ¡Construcción completa!"
 
 up:
-	@echo "🚀 Starting all services..."
+	@echo "🚀 Iniciando todos los servicios..."
 	$(DOCKER_COMPOSE) up -d
-	@echo "✅ Services started!"
+	@echo "✅ ¡Servicios iniciados!"
 	@echo ""
 	@make urls
 	@echo ""
-	@echo "💡 Run 'make logs' to see logs"
-	@echo "💡 Run 'make test' to verify services"
+	@echo "💡 Ejecuta 'make logs' para ver logs"
+	@echo "💡 Ejecuta 'make test' para verificar servicios"
 
 start:
 	@echo "════════════════════════════════════════════════════════════"
-	@echo "  🌟 Complete MLOps Pipeline Startup"
+	@echo "  🌟 Inicio Completo del Pipeline MLOps"
 	@echo "════════════════════════════════════════════════════════════"
 	@echo ""
-	@echo "This will execute the complete pipeline in order:"
-	@echo "  1. 🏗️  Build Docker images"
-	@echo "  2. 🔄 DVC Pipeline: init → data ingestion → preparation → training"
-	@echo "  3. 📊 MLflow UI: Start on port 5000 (after DVC completes)"
-	@echo "  4. 🚀 FastAPI: Start on port 8000 (after MLflow)"
-	@echo "  5. 🌐 Frontend: npm install → dev server on port 8080 (after API)"
-	@echo "  6. 🔄 Sync folders: data, mlruns, models → frontend/public/"
+	@echo "Esto ejecutará el pipeline completo en orden:"
+	@echo "  1. 🏗️  Construir imágenes Docker"
+	@echo "  2. 🔄 Pipeline DVC: init → ingesta datos → preparación → entrenamiento"
+	@echo "  3. 📊 MLflow UI: Iniciar en puerto 5000 (después de DVC)"
+	@echo "  4. 🚀 FastAPI: Iniciar en puerto 8000 (después de MLflow)"
+	@echo "  5. 🌐 Frontend: npm install → servidor dev en puerto 8080 (después de API)"
+	@echo "  6. 🔄 Sincronizar carpetas: data, mlruns, models → frontend/public/"
 	@echo ""
 	@echo "════════════════════════════════════════════════════════════"
 	@echo ""
 	@make build
 	@echo ""
-	@echo "🚀 Starting services in cascade order..."
+	@echo "🚀 Iniciando servicios en orden de cascada..."
 	@$(DOCKER_COMPOSE) up -d
 	@echo ""
-	@echo "⏳ Pipeline Status:"
-	@echo "   ⏳ DVC Pipeline running (this may take 5-10 minutes)..."
-	@echo "   ⏳ MLflow will start after DVC completes"
-	@echo "   ⏳ API will start after MLflow is healthy"
-	@echo "   ⏳ Frontend will start after API is healthy"
+	@echo "⏳ Estado del Pipeline:"
+	@echo "   ⏳ Pipeline DVC en ejecución (esto puede tomar 5-10 minutos)..."
+	@echo "   ⏳ MLflow se iniciará después de que DVC se complete"
+	@echo "   ⏳ API se iniciará después de que MLflow sea saludable"
+	@echo "   ⏳ Frontend se iniciará después de que API sea saludable"
 	@echo ""
-	@echo "📋 Monitor progress:"
-	@echo "  make logs-dvc       - See DVC pipeline execution"
-	@echo "  make logs-mlflow    - See MLflow UI logs"
-	@echo "  make logs-api       - See FastAPI logs"
-	@echo "  make logs-frontend  - See Frontend logs"
-	@echo "  make logs           - See all logs"
-	@echo "  make ps             - Check services status"
+	@echo "📋 Monitorear progreso:"
+	@echo "  make logs-dvc       - Ver ejecución del pipeline DVC"
+	@echo "  make logs-mlflow    - Ver logs de MLflow UI"
+	@echo "  make logs-api       - Ver logs de FastAPI"
+	@echo "  make logs-frontend  - Ver logs de Frontend"
+	@echo "  make logs           - Ver todos los logs"
+	@echo "  make ps             - Verificar estado de servicios"
 	@echo ""
-	@echo "🧪 To verify all services are healthy:"
+	@echo "🧪 Para verificar que todos los servicios son saludables:"
 	@echo "  make test"
 	@echo ""
 	@echo "════════════════════════════════════════════════════════════"
 
 down:
-	@echo "🛑 Stopping all services..."
+	@echo "🛑 Deteniendo todos los servicios..."
 	$(DOCKER_COMPOSE) down
-	@echo "✅ Services stopped"
+	@echo "✅ Servicios detenidos"
 
 restart:
-	@echo "🔄 Restarting all services..."
+	@echo "🔄 Reiniciando todos los servicios..."
 	$(DOCKER_COMPOSE) restart
-	@echo "✅ Services restarted"
+	@echo "✅ Servicios reiniciados"
 
 # ───────────────────────────────────────────────────────────────────
 # Logs
 # ───────────────────────────────────────────────────────────────────
 logs:
-	@echo "📋 Showing all service logs (Ctrl+C to exit)..."
+	@echo "📋 Mostrando logs de todos los servicios (Ctrl+C para salir)..."
 	$(DOCKER_COMPOSE) logs -f
 
 logs-dvc:
-	@echo "📋 DVC Pipeline logs (Ctrl+C to exit)..."
+	@echo "📋 Logs del pipeline DVC (Ctrl+C para salir)..."
 	$(DOCKER_COMPOSE) logs -f dvc-pipeline
 
 logs-mlflow:
-	@echo "📋 MLflow UI logs (Ctrl+C to exit)..."
+	@echo "📋 Logs de MLflow UI (Ctrl+C para salir)..."
 	$(DOCKER_COMPOSE) logs -f mlflow
 
 logs-api:
-	@echo "📋 FastAPI logs (Ctrl+C to exit)..."
+	@echo "📋 Logs de FastAPI (Ctrl+C para salir)..."
 	$(DOCKER_COMPOSE) logs -f api
 
 logs-frontend:
-	@echo "📋 Frontend logs (Ctrl+C to exit)..."
+	@echo "📋 Logs de Frontend (Ctrl+C para salir)..."
 	$(DOCKER_COMPOSE) logs -f frontend
 
 # ───────────────────────────────────────────────────────────────────
-# Operations
+# Operaciones
 # ───────────────────────────────────────────────────────────────────
 shell:
-	@echo "🐚 Opening bash in API container..."
+	@echo "🐚 Abriendo bash en contenedor de API..."
 	docker exec -it mlops-housing-api /bin/bash
 
 shell-dvc:
-	@echo "🐚 Opening bash in DVC pipeline container..."
+	@echo "🐚 Abriendo bash en contenedor del pipeline DVC..."
 	docker exec -it mlops-housing-dvc-pipeline /bin/bash
 
 dvc-repro:
-	@echo "🔄 Re-running DVC pipeline..."
-	@echo "⚠️  Note: The pipeline runs automatically on startup"
-	@echo "⚠️  This command requires dvc-pipeline container to be running"
+	@echo "🔄 Re-ejecutando pipeline DVC..."
+	@echo "⚠️  Nota: El pipeline se ejecuta automáticamente al iniciar"
+	@echo "⚠️  Este comando requiere que el contenedor dvc-pipeline esté en ejecución"
 	docker exec -it mlops-housing-dvc-pipeline dvc repro
-	@echo "✅ DVC pipeline completed"
+	@echo "✅ Pipeline DVC completado"
 
 register-model:
-	@echo "📦 Registering model in MLflow Model Registry..."
+	@echo "📦 Registrando modelo en MLflow Model Registry..."
 	python src/model_register.py --stage Production
-	@echo "✅ Model registered successfully"
+	@echo "✅ Modelo registrado exitosamente"
 
 register-model-staging:
-	@echo "📦 Registering model in MLflow Model Registry (Staging)..."
+	@echo "📦 Registrando modelo en MLflow Model Registry (Staging)..."
 	python src/model_register.py --stage Staging
-	@echo "✅ Model registered in Staging"
+	@echo "✅ Modelo registrado en Staging"
 
 test:
-	@echo "🧪 Testing services..."
+	@echo "🧪 Probando servicios..."
 	@echo ""
 	@sleep 2
-	@echo "Testing FastAPI..."
-	@curl -s http://localhost:8000/health > /dev/null 2>&1 && echo "  ✅ FastAPI is running" || echo "  ❌ FastAPI is not responding"
+	@echo "Probando FastAPI..."
+	@curl -s http://localhost:8000/health > /dev/null 2>&1 && echo "  ✅ FastAPI está en ejecución" || echo "  ❌ FastAPI no está respondiendo"
 	@echo ""
-	@echo "Testing MLflow..."
-	@curl -s http://localhost:5000 > /dev/null 2>&1 && echo "  ✅ MLflow is running" || echo "  ❌ MLflow is not responding"
+	@echo "Probando MLflow..."
+	@curl -s http://localhost:5000 > /dev/null 2>&1 && echo "  ✅ MLflow está en ejecución" || echo "  ❌ MLflow no está respondiendo"
 	@echo ""
-	@echo "Testing Frontend..."
-	@curl -s http://localhost:8080 > /dev/null 2>&1 && echo "  ✅ Frontend is running" || echo "  ❌ Frontend is not responding"
+	@echo "Probando Frontend..."
+	@curl -s http://localhost:8080 > /dev/null 2>&1 && echo "  ✅ Frontend está en ejecución" || echo "  ❌ Frontend no está respondiendo"
 	@echo ""
 
 ps:
-	@echo "📊 Container status:"
+	@echo "📊 Estado de contenedores:"
 	@$(DOCKER_COMPOSE) ps
 
 clean:
-	@echo "🧹 Cleaning up (containers, networks, volumes)..."
+	@echo "🧹 Limpiando (contenedores, redes, volúmenes)..."
 	$(DOCKER_COMPOSE) down -v
-	@echo "✅ Cleanup complete"
+	@echo "✅ Limpieza completada"
 
 # ───────────────────────────────────────────────────────────────────
-# Info
+# Información
 # ───────────────────────────────────────────────────────────────────
 urls:
 	@echo "════════════════════════════════════════════════════════════"
-	@echo "  📡 Service URLs"
+	@echo "  📡 URLs de Servicios"
 	@echo "════════════════════════════════════════════════════════════"
 	@echo ""
 	@echo "  FastAPI Swagger:  http://localhost:8000/docs"
@@ -206,7 +206,7 @@ urls:
 	@echo "════════════════════════════════════════════════════════════"
 
 # ───────────────────────────────────────────────────────────────────
-# Shortcuts
+# Accesos rápidos
 # ───────────────────────────────────────────────────────────────────
 run: up
 stop: down

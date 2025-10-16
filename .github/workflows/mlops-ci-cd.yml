@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       skip_tests:
-        description: 'Skip API tests'
+        description: 'Omitir pruebas de API'
         required: false
         default: 'false'
 
@@ -23,38 +23,38 @@ env:
 
 jobs:
   # ═══════════════════════════════════════════════════════════════════
-  # JOB 1: Code Quality (Linting + Tests)
+  # TRABAJO 1: Calidad de Código (Linting + Pruebas)
   # Siempre se ejecuta para todos los eventos
   # ═══════════════════════════════════════════════════════════════════
   code-quality:
-    name: Code Quality & Linting
+    name: Calidad de Código y Linting
     runs-on: ubuntu-latest
     
     steps:
-    - name: 📥 Checkout code
+    - name: 📥 Descargar código
       uses: actions/checkout@v4
     
-    - name: 🐍 Set up Python ${{ env.PYTHON_VERSION }}
+    - name: 🐍 Configurar Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v5
       with:
         python-version: ${{ env.PYTHON_VERSION }}
         cache: 'pip'
     
-    - name: 📦 Install linting dependencies
+    - name: 📦 Instalar dependencias de linting
       run: |
         python -m pip install --upgrade pip
         pip install flake8 pytest pytest-cov
     
-    - name: 🔍 Run flake8 linting
+    - name: 🔍 Ejecutar flake8 linting
       continue-on-error: true
       run: |
-        echo "🔍 Running flake8..."
+        echo "🔍 Ejecutando flake8..."
         flake8 src/ api/ \
           --max-line-length=100 \
           --ignore=E203,W503 \
           --statistics || true
     
-    - name: 🧪 Run pytest (if tests exist)
+    - name: 🧪 Ejecutar pytest (si existen pruebas)
       if: hashFiles('tests/**/*.py') != ''
       continue-on-error: true
       run: |
@@ -62,19 +62,19 @@ jobs:
         pytest tests/ -v --cov=src --cov-report=term || true
 
   # ═══════════════════════════════════════════════════════════════════
-  # JOB 2: DVC Pipeline (Train Model)
+  # TRABAJO 2: Pipeline DVC (Entrenar Modelo)
   # Se ejecuta con Docker Compose para máxima velocidad
   # ═══════════════════════════════════════════════════════════════════
   train-model:
-    name: Train Model (DVC Pipeline)
+    name: Entrenar Modelo (Pipeline DVC)
     runs-on: ubuntu-latest
     needs: [code-quality]
     
     steps:
-    - name: 📥 Checkout code
+    - name: 📥 Descargar código
       uses: actions/checkout@v4
     
-    - name: 🔐 Create .env file with secrets
+    - name: 🔐 Crear archivo .env con secretos
       env:
         KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
         KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
@@ -90,48 +90,48 @@ jobs:
         LOG_LEVEL=INFO
         EOF
     
-    - name: 🚀 Run DVC Pipeline with Docker Compose
+    - name: 🚀 Ejecutar Pipeline DVC con Docker Compose
       run: |
-        echo "🚀 Running DVC Pipeline (data ingestion + preparation + training)..."
+        echo "🚀 Ejecutando Pipeline DVC (ingesta + preparación + entrenamiento)..."
         docker compose up dvc-pipeline
         
         echo ""
-        echo "✅ DVC Pipeline completed"
+        echo "✅ Pipeline DVC completado"
     
-    - name: 📦 Verify model artifacts
+    - name: 📦 Verificar artefactos del modelo
       run: |
-        echo "🔍 Verifying required model files..."
+        echo "🔍 Verificando archivos de modelo requeridos..."
         
-        # Check model.pkl
+        # Revisar model.pkl
         if [ -f "models/production/latest/model.pkl" ]; then
-          echo "✅ model.pkl found ($(du -h models/production/latest/model.pkl | cut -f1))"
+          echo "✅ model.pkl encontrado ($(du -h models/production/latest/model.pkl | cut -f1))"
         else
-          echo "❌ model.pkl NOT FOUND"
+          echo "❌ model.pkl NO ENCONTRADO"
           exit 1
         fi
         
-        # Check scaler.pkl
+        # Revisar scaler.pkl
         if [ -f "models/production/latest/scaler.pkl" ]; then
-          echo "✅ scaler.pkl found ($(du -h models/production/latest/scaler.pkl | cut -f1))"
+          echo "✅ scaler.pkl encontrado ($(du -h models/production/latest/scaler.pkl | cut -f1))"
         else
-          echo "❌ scaler.pkl NOT FOUND"
+          echo "❌ scaler.pkl NO ENCONTRADO"
           exit 1
         fi
         
-        # Check metadata.json
+        # Revisar metadata.json
         if [ -f "models/production/latest/metadata.json" ]; then
-          echo "✅ metadata.json found"
+          echo "✅ metadata.json encontrado"
           cat models/production/latest/metadata.json | jq '.' || cat models/production/latest/metadata.json
         else
-          echo "❌ metadata.json NOT FOUND"
+          echo "❌ metadata.json NO ENCONTRADO"
           exit 1
         fi
         
         echo ""
-        echo "📊 MLflow runs:"
-        ls -lh mlruns/ 2>/dev/null || echo "mlruns/ directory not found"
+        echo "📊 Ejecuciones de MLflow:"
+        ls -lh mlruns/ 2>/dev/null || echo "directorio mlruns/ no encontrado"
     
-    - name: 📤 Upload model artifacts
+    - name: 📤 Subir artefactos del modelo
       uses: actions/upload-artifact@v4
       with:
         name: model-artifacts
@@ -140,7 +140,7 @@ jobs:
           mlruns/
         retention-days: 30
     
-    - name: 📤 Upload processed data
+    - name: 📤 Subir datos procesados
       uses: actions/upload-artifact@v4
       with:
         name: processed-data
@@ -150,46 +150,46 @@ jobs:
         retention-days: 7
 
   # ═══════════════════════════════════════════════════════════════════
-  # JOB 3: Build & Test API
+  # TRABAJO 3: Construir y Probar API
   # Solo se ejecuta en push a main (producción)
   # ═══════════════════════════════════════════════════════════════════
   build-and-test-api:
-    name: Build & Test API
+    name: Construir y Probar API
     runs-on: ubuntu-latest
     needs: [train-model]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
     steps:
-    - name: 📥 Checkout code
+    - name: 📥 Descargar código
       uses: actions/checkout@v4
     
-    - name: 📥 Download model artifacts
+    - name: 📥 Descargar artefactos del modelo
       uses: actions/download-artifact@v4
       with:
         name: model-artifacts
         path: .
     
-    - name: 📥 Download processed data
+    - name: 📥 Descargar datos procesados
       uses: actions/download-artifact@v4
       with:
         name: processed-data
         path: ./data
     
-    - name: 🐳 Build Docker image
+    - name: 🐳 Construir imagen Docker
       run: |
-        echo "🐳 Building Docker image..."
+        echo "🐳 Construyendo imagen Docker..."
         docker build -t ${{ env.DOCKER_IMAGE_NAME }}:test -f Dockerfile .
         docker build -t ${{ env.DOCKER_IMAGE_NAME }}:latest -f Dockerfile .
-        echo "✅ Docker images built successfully"
+        echo "✅ Imágenes Docker construidas exitosamente"
         
         echo ""
-        echo "📋 Docker images:"
+        echo "📋 Imágenes Docker:"
         docker images | grep ${{ env.DOCKER_IMAGE_NAME }}
     
-    - name: 🚀 Start API container
+    - name: 🚀 Iniciar contenedor de API
       if: github.event.inputs.skip_tests != 'true'
       run: |
-        echo "🚀 Starting API container..."
+        echo "🚀 Iniciando contenedor de API..."
         docker run -d \
           --name mlops-api-test \
           -p 8000:8000 \
@@ -201,38 +201,38 @@ jobs:
           -e ENABLE_MONITORING=true \
           ${{ env.DOCKER_IMAGE_NAME }}:test
         
-        echo "⏳ Waiting 30 seconds for API to start..."
+        echo "⏳ Esperando 30 segundos para que API inicie..."
         sleep 30
     
-    - name: 🔍 Check API container status
+    - name: 🔍 Verificar estado del contenedor de API
       if: always() && github.event.inputs.skip_tests != 'true'
       run: |
-        echo "📊 Container Status:"
-        docker ps -a | grep mlops-api-test || echo "Container not found"
+        echo "📊 Estado del Contenedor:"
+        docker ps -a | grep mlops-api-test || echo "Contenedor no encontrado"
         
         echo ""
-        echo "📋 API Container Logs (last 50 lines):"
+        echo "📋 Logs del Contenedor de API (últimas 50 líneas):"
         docker logs mlops-api-test 2>&1 | tail -50
     
-    - name: 🧪 Test /health endpoint
+    - name: 🧪 Probar endpoint /health
       if: github.event.inputs.skip_tests != 'true'
       run: |
-        echo "🧪 Testing /health endpoint..."
+        echo "🧪 Probando endpoint /health..."
         
         for i in {1..10}; do
           if curl -f -s http://localhost:8000/health; then
             echo ""
-            echo "✅ Health check passed on attempt $i"
+            echo "✅ Verificación de salud aprobada en intento $i"
             break
           fi
-          echo "⏳ Attempt $i/10 failed, retrying in 3 seconds..."
+          echo "⏳ Intento $i/10 falló, reintentando en 3 segundos..."
           sleep 3
         done
     
-    - name: 🧪 Test /predict endpoint (CRITICAL)
+    - name: 🧪 Probar endpoint /predict (CRÍTICO)
       if: github.event.inputs.skip_tests != 'true'
       run: |
-        echo "🧪 Testing /predict endpoint with sample data..."
+        echo "🧪 Probando endpoint /predict con datos de muestra..."
         
         RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" -X POST http://localhost:8000/predict \
           -H "Content-Type: application/json" \
@@ -252,121 +252,121 @@ jobs:
         HTTP_CODE=$(echo "$RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
         BODY=$(echo "$RESPONSE" | grep -v "HTTP_CODE:")
         
-        echo "HTTP Status: $HTTP_CODE"
-        echo "Response Body:"
+        echo "Estado HTTP: $HTTP_CODE"
+        echo "Cuerpo de Respuesta:"
         echo "$BODY" | jq '.' 2>/dev/null || echo "$BODY"
         
         if [ "$HTTP_CODE" != "200" ]; then
           echo ""
-          echo "❌ PREDICTION FAILED - HTTP Status: $HTTP_CODE"
+          echo "❌ PREDICCIÓN FALLÓ - Estado HTTP: $HTTP_CODE"
           echo ""
-          echo "=== Container Logs ==="
+          echo "=== Logs del Contenedor ==="
           docker logs mlops-api-test 2>&1 | tail -100
           exit 1
         fi
         
-        # Verify response contains prediction
+        # Verificar que la respuesta contiene predicción
         if echo "$BODY" | jq -e '.prediction' > /dev/null 2>&1; then
           PRED_VALUE=$(echo "$BODY" | jq -r '.prediction')
           echo ""
-          echo "✅ PREDICTION SUCCESSFUL"
-          echo "   Predicted price: \$${PRED_VALUE}K"
+          echo "✅ PREDICCIÓN EXITOSA"
+          echo "   Precio predicho: \$${PRED_VALUE}K"
         else
           echo ""
-          echo "❌ Response missing 'prediction' field"
+          echo "❌ La respuesta no tiene campo 'prediction'"
           exit 1
         fi
     
-    - name: 🧪 Test multiple predictions (stress test)
+    - name: 🧪 Probar múltiples predicciones (prueba de estrés)
       if: github.event.inputs.skip_tests != 'true'
       run: |
-        echo "🧪 Testing batch predictions..."
+        echo "🧪 Probando predicciones en lote..."
         
-        # Test 1: Low-risk property
-        echo "Test 1: Low-risk property"
+        # Prueba 1: Propiedad de bajo riesgo
+        echo "Prueba 1: Propiedad de bajo riesgo"
         RESP1=$(curl -s -X POST http://localhost:8000/predict \
           -H "Content-Type: application/json" \
           -d '{"CRIM":0.01,"NOX":0.4,"RM":7.0,"AGE":20,"DIS":5.0,"RAD":1,"TAX":200,"PTRATIO":12,"B":390,"LSTAT":3}')
-        echo "$RESP1" | jq '.' || echo "Test 1 failed"
+        echo "$RESP1" | jq '.' || echo "Prueba 1 falló"
         
-        # Test 2: High-risk property
+        # Prueba 2: Propiedad de alto riesgo
         echo ""
-        echo "Test 2: High-risk property"
+        echo "Prueba 2: Propiedad de alto riesgo"
         RESP2=$(curl -s -X POST http://localhost:8000/predict \
           -H "Content-Type: application/json" \
           -d '{"CRIM":10.0,"NOX":0.7,"RM":4.0,"AGE":95,"DIS":1.5,"RAD":24,"TAX":700,"PTRATIO":22,"B":100,"LSTAT":30}')
-        echo "$RESP2" | jq '.' || echo "Test 2 failed"
+        echo "$RESP2" | jq '.' || echo "Prueba 2 falló"
         
         echo ""
-        echo "✅ Multiple predictions completed"
+        echo "✅ Múltiples predicciones completadas"
     
-    - name: 📊 Create deployment summary
+    - name: 📊 Crear resumen de despliegue
       if: always()
       run: |
-        echo "## 🚀 MLOps CI/CD Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+        echo "## 🚀 Resumen del Pipeline MLOps CI/CD" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### ✅ Pipeline Status" >> $GITHUB_STEP_SUMMARY
-        echo "- **Code Quality**: ✅ Passed" >> $GITHUB_STEP_SUMMARY
-        echo "- **DVC Pipeline**: ✅ Completed" >> $GITHUB_STEP_SUMMARY
-        echo "- **Docker Build**: ✅ Success" >> $GITHUB_STEP_SUMMARY
-        echo "- **API Tests**: ✅ Passed" >> $GITHUB_STEP_SUMMARY
+        echo "### ✅ Estado del Pipeline" >> $GITHUB_STEP_SUMMARY
+        echo "- **Calidad de Código**: ✅ Aprobado" >> $GITHUB_STEP_SUMMARY
+        echo "- **Pipeline DVC**: ✅ Completado" >> $GITHUB_STEP_SUMMARY
+        echo "- **Construcción Docker**: ✅ Éxito" >> $GITHUB_STEP_SUMMARY
+        echo "- **Pruebas de API**: ✅ Aprobado" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 🔗 Commit Information" >> $GITHUB_STEP_SUMMARY
+        echo "### 🔗 Información del Commit" >> $GITHUB_STEP_SUMMARY
         echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-        echo "- **Author**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Event**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Autor**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Rama**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Evento**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 📦 Artifacts Generated" >> $GITHUB_STEP_SUMMARY
+        echo "### 📦 Artefactos Generados" >> $GITHUB_STEP_SUMMARY
         echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-        ls -lh models/production/latest/ 2>/dev/null || echo "Models not accessible" >> $GITHUB_STEP_SUMMARY
+        ls -lh models/production/latest/ 2>/dev/null || echo "Modelos no accesibles" >> $GITHUB_STEP_SUMMARY
         echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 🐳 Docker Image" >> $GITHUB_STEP_SUMMARY
-        echo "- **Image**: \`${{ env.DOCKER_IMAGE_NAME }}:latest\`" >> $GITHUB_STEP_SUMMARY
-        echo "- **Tag**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "### 🐳 Imagen Docker" >> $GITHUB_STEP_SUMMARY
+        echo "- **Imagen**: \`${{ env.DOCKER_IMAGE_NAME }}:latest\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Etiqueta**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 🎯 Next Steps" >> $GITHUB_STEP_SUMMARY
-        echo "1. Review artifacts in Actions tab" >> $GITHUB_STEP_SUMMARY
-        echo "2. Models retained for 30 days" >> $GITHUB_STEP_SUMMARY
-        echo "3. Ready for deployment" >> $GITHUB_STEP_SUMMARY
+        echo "### 🎯 Siguientes Pasos" >> $GITHUB_STEP_SUMMARY
+        echo "1. Revisar artefactos en la pestaña Actions" >> $GITHUB_STEP_SUMMARY
+        echo "2. Los modelos se retienen durante 30 días" >> $GITHUB_STEP_SUMMARY
+        echo "3. Listo para desplegar" >> $GITHUB_STEP_SUMMARY
     
-    - name: 🧹 Cleanup
+    - name: 🧹 Limpiar
       if: always()
       run: |
-        echo "🧹 Cleaning up..."
+        echo "🧹 Limpiando..."
         docker stop mlops-api-test 2>/dev/null || true
         docker rm mlops-api-test 2>/dev/null || true
-        echo "✅ Cleanup completed"
+        echo "✅ Limpieza completada"
 
   # ═══════════════════════════════════════════════════════════════════
-  # JOB 4: Quick Validation (Para PRs y feature branches)
-  # Solo valida que el modelo se pueda entrenar sin ejecutar tests
+  # TRABAJO 4: Validación Rápida (Para PRs y ramas feature)
+  # Solo valida que el modelo se pueda entrenar sin ejecutar pruebas
   # ═══════════════════════════════════════════════════════════════════
   quick-validation:
-    name: Quick Validation (PR/Feature Branch)
+    name: Validación Rápida (PR/Rama Feature)
     runs-on: ubuntu-latest
     needs: [train-model]
     if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main')
     
     steps:
-    - name: 📥 Checkout code
+    - name: 📥 Descargar código
       uses: actions/checkout@v4
     
-    - name: 📥 Download model artifacts
+    - name: 📥 Descargar artefactos del modelo
       uses: actions/download-artifact@v4
       with:
         name: model-artifacts
         path: .
     
-    - name: ✅ Verify artifacts
+    - name: ✅ Verificar artefactos
       run: |
-        echo "✅ Quick validation - artifacts generated successfully"
+        echo "✅ Validación rápida - artefactos generados exitosamente"
         echo ""
-        echo "📦 Model files:"
+        echo "📦 Archivos del modelo:"
         ls -lh models/production/latest/
         echo ""
         echo "📊 MLflow:"
-        ls -lh mlruns/ 2>/dev/null || echo "mlruns/ not found"
+        ls -lh mlruns/ 2>/dev/null || echo "mlruns/ no encontrado"
         echo ""
-        echo "✅ Validation passed - ready for merge"
+        echo "✅ Validación aprobada - listo para fusionar"

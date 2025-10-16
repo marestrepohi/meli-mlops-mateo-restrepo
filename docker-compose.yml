@@ -1,6 +1,6 @@
 services:
   # ============================================================================
-  # PASO 1: DVC Pipeline (data ingestion + preparation + training)
+  # PASO 1: Pipeline DVC (ingesta de datos + preparación + entrenamiento)
   # ============================================================================
   dvc-pipeline:
     build:
@@ -24,23 +24,23 @@ services:
       - LOG_LEVEL=INFO
     command: >
       sh -c "
-        echo '🔧 Step 1: Initializing DVC repository (no SCM)...' &&
+        echo '🔧 Paso 1: Inicializando repositorio DVC (sin SCM)...' &&
         dvc init --no-scm --force &&
-        echo '✅ DVC initialized' &&
-        echo '🔄 Step 2: Running DVC pipeline (data ingestion + preparation + training)...' &&
+        echo '✅ DVC inicializado' &&
+        echo '🔄 Paso 2: Ejecutando pipeline DVC (ingesta + preparación + entrenamiento)...' &&
         dvc repro &&
-        echo '✅ DVC pipeline completed' &&
-        echo '🤖 Step 3: Models trained and best model selected' &&
-        echo '✅ Pipeline finished - data, models, mlruns generated' &&
-        echo '👉 Next: MLflow UI will start on port 5000' &&
-        echo '🎯 DVC container will exit now - this is expected!'
+        echo '✅ Pipeline DVC completado' &&
+        echo '🤖 Paso 3: Modelos entrenados y mejor modelo seleccionado' &&
+        echo '✅ Pipeline finalizado - datos, modelos, mlruns generados' &&
+        echo '👉 Siguiente: MLflow UI se iniciará en puerto 5000' &&
+        echo '🎯 El contenedor DVC saldrá ahora - ¡esto es esperado!'
       "
     restart: "no"
     networks:
       - mlops-housing-network
 
   # ============================================================================
-  # PASO 2: MLflow UI (después de DVC pipeline)
+  # PASO 2: MLflow UI (después del pipeline DVC)
   # ============================================================================
   mlflow:
     build:
@@ -53,14 +53,14 @@ services:
       - ./mlruns:/app/mlruns:ro
     command: >
       sh -c "
-        echo '⏳ Waiting for DVC pipeline to complete...' &&
+        echo '⏳ Esperando a que el pipeline DVC se complete...' &&
         while [ ! -d /app/mlruns ] || [ -z \"$$(ls -A /app/mlruns 2>/dev/null)\" ]; do
-          echo '   Waiting for mlruns directory...' &&
+          echo '   Esperando directorio mlruns...' &&
           sleep 5
         done &&
-        echo '✅ mlruns directory found' &&
-        echo '📊 Step 4: Starting MLflow UI on port 5000...' &&
-        echo '   Using mlruns from: /app/mlruns' &&
+        echo '✅ Directorio mlruns encontrado' &&
+        echo '📊 Paso 4: Iniciando MLflow UI en puerto 5000...' &&
+        echo '   Usando mlruns desde: /app/mlruns' &&
         mlflow ui --host 0.0.0.0 --port 5000 --backend-store-uri file:///app/mlruns
       "
     healthcheck:
@@ -100,10 +100,10 @@ services:
       - LOG_LEVEL=INFO
     command: >
       sh -c "
-        echo '⏳ Waiting for MLflow UI to be ready...' &&
+        echo '⏳ Esperando a que MLflow UI esté listo...' &&
         sleep 10 &&
-        echo '🚀 Step 5: Starting FastAPI on port 8000...' &&
-        echo '   Model: models/production/latest/' &&
+        echo '🚀 Paso 5: Iniciando FastAPI en puerto 8000...' &&
+        echo '   Modelo: models/production/latest/' &&
         uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
       "
     healthcheck:
@@ -138,16 +138,16 @@ services:
       - VITE_MLFLOW_URL=http://localhost:5000
     command: >
       sh -c "
-        echo '⏳ Waiting for API to be ready...' &&
+        echo '⏳ Esperando a que API esté lista...' &&
         sleep 10 &&
-        echo '📦 Step 6: Installing frontend dependencies...' &&
+        echo '📦 Paso 6: Instalando dependencias del frontend...' &&
         npm install &&
-        echo '🔄 Step 7: Syncing folders (data, mlruns, models)...' &&
-        echo '   ✅ data/ -> public/data/ (mounted)' &&
-        echo '   ✅ mlruns/ -> public/mlruns/ (mounted)' &&
-        echo '   ✅ models/ -> public/models/ (mounted)' &&
-        echo '🌐 Step 8: Starting Vite dev server on port 8080...' &&
-        echo '   Frontend will consume:' &&
+        echo '🔄 Paso 7: Sincronizando carpetas (data, mlruns, modelos)...' &&
+        echo '   ✅ data/ -> public/data/ (montado)' &&
+        echo '   ✅ mlruns/ -> public/mlruns/ (montado)' &&
+        echo '   ✅ models/ -> public/models/ (montado)' &&
+        echo '🌐 Paso 8: Iniciando servidor Vite en puerto 8080...' &&
+        echo '   Frontend consumirá:' &&
         echo '   - API: http://localhost:8000' &&
         echo '   - MLflow: http://localhost:5000' &&
         npm run dev -- --host 0.0.0.0 --port 8080
