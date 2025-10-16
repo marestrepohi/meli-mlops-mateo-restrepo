@@ -9,8 +9,12 @@
 [![Licencia](https://img.shields.io/badge/licencia-MIT-blue.svg)](LICENSE)
 
 ---
+## 👤 Autor
 
-## � Capturas del Sistema
+**Mateo Restrepo**
+- GitHub: [@marestrepohi](https://github.com/marestrepohi)
+- LinkedIn: [mateo-restrepo](https://www.linkedin.com/in/mateorestrepohiguita-datascientist/)
+---
 
 <div align="center">
 
@@ -30,14 +34,6 @@
 > 🤖 **Sistema completo y producción-ready de MLOps** para predicción de precios de viviendas. 
 > Solución agnóstica a la nube con tecnologías open-source, pipeline reproducible, API REST, monitoreo continuo y CI/CD automatizado. 
 > **Este proyecto fue co-creado con GitHub Copilot** integrando técnicas modernas de IA en todo el ciclo de desarrollo.
-
----
-
-## 👤 Autor
-
-**Mateo Restrepo**
-- GitHub: [@marestrepohi](https://github.com/marestrepohi)
-- LinkedIn: [mateo-restrepo](https://www.linkedin.com/in/mateorestrepohiguita-datascientist/)
 
 ---
 
