@@ -100,22 +100,38 @@ jobs:
           exit 1
         fi
     
-    - name: Start API with Docker Compose
+    - name: Build API image
       run: |
-        echo "🚀 Step 2: Starting API..."
-        docker compose up -d api
+        echo "🐳 Building API Docker image..."
+        docker build -t mlops-api:test --file Dockerfile .
+        echo "✅ API image built"
+    
+    - name: Start API container
+      run: |
+        echo "🚀 Step 2: Starting API container (standalone)..."
+        docker run -d \
+          --name mlops-api-test \
+          -p 8000:8000 \
+          -v $(pwd)/models:/app/models:ro \
+          -v $(pwd)/data:/app/data \
+          -e PYTHONUNBUFFERED=1 \
+          -e API_HOST=0.0.0.0 \
+          -e API_PORT=8000 \
+          -e ENABLE_MONITORING=true \
+          mlops-api:test \
+          uvicorn api.main:app --host 0.0.0.0 --port 8000
         
         echo "⏳ Waiting 30 seconds for API to start..."
         sleep 30
         
-        echo "📊 Container status:"
-        docker compose ps
+        echo "� Container status:"
+        docker ps -a | grep mlops-api-test
     
     - name: Check API logs
       if: always()
       run: |
         echo "📋 API Logs:"
-        docker compose logs api | tail -100
+        docker logs mlops-api-test 2>&1 | tail -100
     
     - name: Test API - Health Check
       run: |
@@ -222,5 +238,10 @@ jobs:
       if: always()
       run: |
         echo "🧹 Cleaning up..."
+        # Stop and remove API container
+        docker stop mlops-api-test || true
+        docker rm mlops-api-test || true
+        docker rmi mlops-api:test || true
+        # Clean up DVC pipeline containers
         docker compose down -v || true
-        docker compose ps
+        echo "✅ Cleanup completed"

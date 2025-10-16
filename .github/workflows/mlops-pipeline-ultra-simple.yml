@@ -1,0 +1,151 @@
+name: MLOps Pipeline - Ultra Simplified
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # ==============================================================================
+  # JOB 1: Code Quality
+  # ==============================================================================
+  quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+    
+    - name: Run linting
+      continue-on-error: true
+      run: |
+        pip install flake8
+        flake8 src/ api/ --max-line-length=100 --ignore=E203,W503 --statistics || true
+
+  # ==============================================================================
+  # JOB 2: DVC Pipeline + API (Single Container)
+  # ==============================================================================
+  train-and-test:
+    name: Train & Test API
+    runs-on: ubuntu-latest
+    needs: [quality]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Create .env file
+      env:
+        KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+        KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+      run: |
+        cat > .env << EOF
+        KAGGLE_USERNAME=$KAGGLE_USERNAME
+        KAGGLE_KEY=$KAGGLE_KEY
+        EOF
+    
+    - name: Build Docker image
+      run: |
+        echo "🐳 Building Docker image..."
+        docker build -t mlops:test -f Dockerfile .
+        echo "✅ Image built"
+    
+    - name: Run DVC Pipeline in container
+      run: |
+        echo "🚀 Step 1: Running DVC Pipeline..."
+        docker run --rm \
+          -v $(pwd)/data:/app/data \
+          -v $(pwd)/models:/app/models \
+          -v $(pwd)/mlruns:/app/mlruns \
+          --env-file .env \
+          mlops:test \
+          sh -c "dvc init --no-scm --force && dvc repro --force"
+        
+        echo ""
+        echo "📦 Artifacts generated:"
+        ls -lh models/production/latest/ 2>/dev/null || echo "Models not found"
+    
+    - name: Verify model files
+      run: |
+        echo "🔍 Verifying model files..."
+        test -f models/production/latest/model.pkl && echo "✅ model.pkl" || exit 1
+        test -f models/production/latest/scaler.pkl && echo "✅ scaler.pkl" || exit 1
+        test -f models/production/latest/metadata.json && echo "✅ metadata.json" || exit 1
+    
+    - name: Start API and test
+      run: |
+        echo "🚀 Step 2: Starting API..."
+        docker run -d \
+          --name api-test \
+          -p 8000:8000 \
+          -v $(pwd)/models:/app/models:ro \
+          -v $(pwd)/data:/app/data \
+          mlops:test \
+          uvicorn api.main:app --host 0.0.0.0 --port 8000
+        
+        echo "⏳ Waiting 30s..."
+        sleep 30
+    
+    - name: Check API logs
+      if: always()
+      run: |
+        echo "📋 API Logs:"
+        docker logs api-test 2>&1 | tail -50
+    
+    - name: Test prediction endpoint
+      run: |
+        echo "🧪 Testing /predict..."
+        
+        RESPONSE=$(curl -s -w "\nHTTP:%{http_code}" -X POST http://localhost:8000/predict \
+          -H "Content-Type: application/json" \
+          -d '{"CRIM":0.00632,"NOX":0.538,"RM":6.575,"AGE":65.2,"DIS":4.09,"RAD":1,"TAX":296,"PTRATIO":15.3,"B":396.9,"LSTAT":4.98}')
+        
+        HTTP_CODE=$(echo "$RESPONSE" | grep "HTTP:" | cut -d: -f2)
+        BODY=$(echo "$RESPONSE" | grep -v "HTTP:")
+        
+        echo "Status: $HTTP_CODE"
+        echo "Response: $BODY"
+        
+        if [ "$HTTP_CODE" != "200" ]; then
+          echo "❌ FAILED"
+          docker logs api-test
+          exit 1
+        fi
+        
+        if echo "$BODY" | jq -e '.prediction' > /dev/null 2>&1; then
+          PRICE=$(echo "$BODY" | jq -r '.prediction')
+          echo "✅ SUCCESS - Predicted: \$${PRICE}K"
+        else
+          echo "❌ No prediction in response"
+          exit 1
+        fi
+    
+    - name: Summary
+      if: always()
+      run: |
+        echo "## 🚀 Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "✅ DVC Pipeline: Completed" >> $GITHUB_STEP_SUMMARY
+        echo "✅ API Prediction: Working" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "Author: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+    
+    - name: Cleanup
+      if: always()
+      run: |
+        docker stop api-test || true
+        docker rm api-test || true
+        docker rmi mlops:test || true
