@@ -114,13 +114,18 @@ mlflow ui --port 5000
 cd front && npm install && npm run dev
 ```
 
-**URLs disponibles:**
-- 🔵 API: http://localhost:8000
-- 📊 MLflow: http://localhost:5000
-- 🌐 Frontend: http://localhost:8080
-
 ---
 
+## 📊 Servicios Disponibles
+
+| Servicio | Puerto | URL | Descripción |
+|----------|--------|-----|-------------|
+| **API (FastAPI)** | 8000 | http://localhost:8000 | REST API con predicciones en tiempo real |
+| **Swagger Docs** | 8000 | http://localhost:8000/docs | Documentación interactiva |
+| **MLflow UI** | 5000 | http://localhost:5000 | Tracking de experimentos y modelos |
+| **Frontend** | 8080 | http://localhost:8080 o http://localhost:8082 | Dashboard web interactivo |
+
+---
 ## 🧪 Testear la API
 
 ### Test 1: Health Check (Verificar que API está activa)
@@ -216,19 +221,6 @@ curl -X POST http://localhost:8000/predict/batch \
 }
 ```
 
----
-
-
-## 📊 Servicios Disponibles
-
-| Servicio | Puerto | URL | Descripción |
-|----------|--------|-----|-------------|
-| **API (FastAPI)** | 8000 | http://localhost:8000 | REST API con predicciones en tiempo real |
-| **Swagger Docs** | 8000 | http://localhost:8000/docs | Documentación interactiva |
-| **MLflow UI** | 5000 | http://localhost:5000 | Tracking de experimentos y modelos |
-| **Frontend** | 8080 | http://localhost:8080 | Dashboard web interactivo |
-
----
 
 ## 🔄 Flujo del Proyecto 
 
