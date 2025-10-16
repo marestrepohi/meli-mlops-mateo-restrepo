@@ -90,6 +90,7 @@ make restart        - Reiniciar todos los servicios
 # 1. Clonar repositorio
 git clone https://github.com/marestrepohi/meli-mlops-mateo-restrepo.git
 cd meli-mlops-mateo-restrepo
+cp .env.example .env
 
 # 2. Crear entorno virtual
 python3 -m venv venv
