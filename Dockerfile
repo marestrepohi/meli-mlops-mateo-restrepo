@@ -1,42 +1,41 @@
-# Python base image
-FROM python:3.10-slim
+# ═══════════════════════════════════════════════════════════════════
+# Dockerfile for MLOps Housing Project
+# Python Backend for DVC + FastAPI + MLflow
+# ═══════════════════════════════════════════════════════════════════
 
-# Set working directory
+FROM python:3.11-slim
+
 WORKDIR /app
 
-# Install system dependencies (including curl for healthcheck)
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
+    git \
     curl \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
+# Copy and install Python requirements
 COPY requirements.txt .
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Copy ONLY necessary project files for DVC pipeline
+COPY dvc.yaml params.yaml ./
 COPY src/ ./src/
 COPY api/ ./api/
-COPY setup.py .
 
-# Copy model artifacts if they exist
-COPY models/ ./models/ 2>/dev/null || true
+# Create directories for DVC outputs (will be populated by DVC repro)
+# data/raw - created and populated by data_ingestion.py
+# data/processed - created by data_preparation.py
+# models - created by model_train.py
+# mlruns - created by MLflow during training
+RUN mkdir -p data models mlruns
 
-# Create necessary directories
-RUN mkdir -p data/predictions models/production/latest logs
-
-# Install the package
-RUN pip install -e .
-
-# Expose API port
-EXPOSE 8000
+# Expose ports for API and MLflow
+EXPOSE 8000 5000 8080
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Run the API
+# Default command (can be overridden by docker-compose)
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,61 +1,172 @@
-version: '3.8'
-
 services:
-  # MLflow tracking server
+  # ============================================================================
+  # PASO 1: DVC Pipeline (data ingestion + preparation + training)
+  # ============================================================================
+  dvc-pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mlops-housing-dvc-pipeline
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./mlruns:/app/mlruns
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MLFLOW_TRACKING_URI=mlruns
+      - MLFLOW_EXPERIMENT_NAME=housing-price-prediction
+      - MODEL_PATH=models/production
+      - DATA_PATH=data/housing.csv
+      - RAW_DATA_PATH=data/raw
+      - KAGGLE_USERNAME=${KAGGLE_USERNAME:-marestrepohi}
+      - KAGGLE_KEY=${KAGGLE_KEY:-037c85291a66a2b8159a83970e814353}
+      - ENABLE_MONITORING=true
+      - LOG_LEVEL=INFO
+    command: >
+      sh -c "
+        echo '🔧 Step 1: Initializing DVC repository (no SCM)...' &&
+        dvc init --no-scm --force &&
+        echo '✅ DVC initialized' &&
+        echo '🔄 Step 2: Running DVC pipeline (data ingestion + preparation + training)...' &&
+        dvc repro &&
+        echo '✅ DVC pipeline completed' &&
+        echo '🤖 Step 3: Models trained and best model selected' &&
+        echo '✅ Pipeline finished - data, models, mlruns generated' &&
+        echo '👉 Next: MLflow UI will start on port 5000' &&
+        echo '🎯 DVC container will exit now - this is expected!'
+      "
+    restart: "no"
+    networks:
+      - mlops-housing-network
+
+  # ============================================================================
+  # PASO 2: MLflow UI (después de DVC pipeline)
+  # ============================================================================
   mlflow:
-    image: ghcr.io/mlflow/mlflow:v2.8.1
-    container_name: mlflow-server
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mlops-housing-mlflow
     ports:
       - "5000:5000"
     volumes:
-      - ./mlruns:/mlflow/mlruns
+      - ./mlruns:/app/mlruns:ro
     command: >
-      mlflow server
-      --host 0.0.0.0
-      --port 5000
-      --backend-store-uri file:///mlflow/mlruns
-      --default-artifact-root file:///mlflow/mlruns
-    networks:
-      - ml-network
+      sh -c "
+        echo '⏳ Waiting for DVC pipeline to complete...' &&
+        while [ ! -d /app/mlruns ] || [ -z \"$$(ls -A /app/mlruns 2>/dev/null)\" ]; do
+          echo '   Waiting for mlruns directory...' &&
+          sleep 5
+        done &&
+        echo '✅ mlruns directory found' &&
+        echo '📊 Step 4: Starting MLflow UI on port 5000...' &&
+        echo '   Using mlruns from: /app/mlruns' &&
+        mlflow ui --host 0.0.0.0 --port 5000 --backend-store-uri file:///app/mlruns
+      "
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5000"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 30s
+    restart: unless-stopped
+    depends_on:
+      dvc-pipeline:
+        condition: service_completed_successfully
+    networks:
+      - mlops-housing-network
 
-  # Housing Price Prediction API
+  # ============================================================================
+  # PASO 3: FastAPI (después de MLflow)
+  # ============================================================================
   api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: housing-price-api
+    container_name: mlops-housing-api
     ports:
       - "8000:8000"
     volumes:
       - ./data:/app/data
-      - ./models:/app/models
-      - ./logs:/app/logs
-      - ./api:/app/api
+      - ./models:/app/models:ro
+      - ./mlruns:/app/mlruns:ro
     environment:
+      - PYTHONUNBUFFERED=1
       - MLFLOW_TRACKING_URI=http://mlflow:5000
       - API_HOST=0.0.0.0
       - API_PORT=8000
+      - MODEL_PATH=models/production
       - ENABLE_MONITORING=true
       - LOG_LEVEL=INFO
-    depends_on:
-      mlflow:
-        condition: service_healthy
-    networks:
-      - ml-network
-    restart: unless-stopped
+    command: >
+      sh -c "
+        echo '⏳ Waiting for MLflow UI to be ready...' &&
+        sleep 10 &&
+        echo '🚀 Step 5: Starting FastAPI on port 8000...' &&
+        echo '   Model: models/production/latest/' &&
+        uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+      "
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
+    restart: unless-stopped
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    networks:
+      - mlops-housing-network
+
+  # ============================================================================
+  # PASO 4: Frontend (después de API)
+  # ============================================================================
+  frontend:
+    image: node:20-alpine
+    container_name: mlops-housing-frontend
+    working_dir: /app
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./front:/app
+      - ./data:/app/public/data:ro
+      - ./mlruns:/app/public/mlruns:ro
+      - ./models:/app/public/models:ro
+    environment:
+      - VITE_API_URL=http://localhost:8000
+      - VITE_MLFLOW_URL=http://localhost:5000
+    command: >
+      sh -c "
+        echo '⏳ Waiting for API to be ready...' &&
+        sleep 10 &&
+        echo '📦 Step 6: Installing frontend dependencies...' &&
+        npm install &&
+        echo '🔄 Step 7: Syncing folders (data, mlruns, models)...' &&
+        echo '   ✅ data/ -> public/data/ (mounted)' &&
+        echo '   ✅ mlruns/ -> public/mlruns/ (mounted)' &&
+        echo '   ✅ models/ -> public/models/ (mounted)' &&
+        echo '🌐 Step 8: Starting Vite dev server on port 8080...' &&
+        echo '   Frontend will consume:' &&
+        echo '   - API: http://localhost:8000' &&
+        echo '   - MLflow: http://localhost:5000' &&
+        npm run dev -- --host 0.0.0.0 --port 8080
+      "
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+      mlflow:
+        condition: service_healthy
+    networks:
+      - mlops-housing-network
 
 networks:
-  ml-network:
+  mlops-housing-network:
     driver: bridge

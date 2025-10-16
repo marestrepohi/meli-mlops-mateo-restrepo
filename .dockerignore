@@ -1,0 +1,90 @@
+# Docker ignore patterns
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Node
+node_modules/
+front/node_modules/
+front/dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# Large files
+*.csv
+*.pkl
+!models/production/latest/*.pkl
+
+# DVC generated folders (created by dvc repro, not copied)
+data/
+models/
+mlruns/
+.dvc/cache/
+.dvc/tmp/
+
+# Frontend (separate Node.js container)
+front/
+
+# Frontend synced folders (mounted as volumes, not copied)
+front/public/data/
+front/public/models/
+front/public/mlruns/
+
+# Logs
+*.log
+logs/
+
+# Env files
+.env
+.env.local
+
+# Temporary files
+tmp/
+temp/
+*.tmp

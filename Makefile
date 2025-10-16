@@ -1,151 +1,201 @@
-.PHONY: help install setup clean test lint train api docker-build docker-up docker-down logs
+# ═══════════════════════════════════════════════════════════════════
+# Makefile for MLOps Housing Project
+# Docker Compose Management
+# ═══════════════════════════════════════════════════════════════════
+
+.PHONY: help build up down restart logs logs-api logs-mlflow logs-frontend shell test clean ps urls start
 
 # Variables
-PYTHON := python3
-PIP := pip
-VENV := venv
-API_PORT := 8000
-MLFLOW_PORT := 5000
+DOCKER_COMPOSE = docker-compose
+BACKEND_CONTAINER = mlops-housing-backend
+MLFLOW_CONTAINER = mlops-housing-mlflow
+FRONTEND_CONTAINER = mlops-housing-frontend
 
-# Colores para output
-GREEN := \033[0;32m
-YELLOW := \033[1;33m
-NC := \033[0m # No Color
+# ───────────────────────────────────────────────────────────────────
+# Help
+# ───────────────────────────────────────────────────────────────────
+help:
+	@echo "════════════════════════════════════════════════════════════"
+	@echo "  MLOps Housing Project - Docker Compose Commands"
+	@echo "════════════════════════════════════════════════════════════"
+	@echo ""
+	@echo "🚀 Main Commands:"
+	@echo "  make start          - 🌟 Build + Start all services (RECOMMENDED)"
+	@echo "  make build          - Build all Docker images"
+	@echo "  make up             - Start all services (API, MLflow, Frontend)"
+	@echo "  make down           - Stop and remove all containers"
+	@echo "  make restart        - Restart all services"
+	@echo ""
+	@echo "📋 Monitoring:"
+	@echo "  make logs           - Show all service logs"
+	@echo "  make logs-api       - Show only API logs"
+	@echo "  make logs-mlflow    - Show only MLflow logs"
+	@echo "  make logs-frontend  - Show only Frontend logs"
+	@echo "  make ps             - Show container status"
+	@echo ""
+	@echo "🔧 Operations:"
+	@echo "  make shell          - Open bash in backend container"
+	@echo "  make test           - Test all services health"
+	@echo "  make dvc-repro      - Run DVC pipeline"
+	@echo "  make clean          - Remove all containers and volumes"
+	@echo "  make urls           - Show service URLs"
+	@echo ""
+	@echo "📡 Services (after 'make up'):"
+	@echo "  - FastAPI:    http://localhost:8000"
+	@echo "  - MLflow UI:  http://localhost:5000"
+	@echo "  - Frontend:   http://localhost:8080"
+	@echo ""
+	@echo "════════════════════════════════════════════════════════════"
 
-help: ## Muestra esta ayuda
-	@echo "$(GREEN)Housing Price Prediction - Comandos Disponibles$(NC)"
-	@echo "=================================================="
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(YELLOW)%-20s$(NC) %s\n", $$1, $$2}'
+# ───────────────────────────────────────────────────────────────────
+# Build & Run
+# ───────────────────────────────────────────────────────────────────
+build:
+	@echo "🏗️  Building Docker images..."
+	$(DOCKER_COMPOSE) build
+	@echo "✅ Build complete!"
 
-install: ## Instala dependencias en ambiente virtual
-	@echo "$(GREEN)📦 Instalando dependencias...$(NC)"
-	$(PYTHON) -m venv $(VENV)
-	. $(VENV)/bin/activate && $(PIP) install --upgrade pip
-	. $(VENV)/bin/activate && $(PIP) install -r requirements.txt
-	. $(VENV)/bin/activate && $(PIP) install -e .
-	@echo "$(GREEN)✅ Dependencias instaladas$(NC)"
+up:
+	@echo "🚀 Starting all services..."
+	$(DOCKER_COMPOSE) up -d
+	@echo "✅ Services started!"
+	@echo ""
+	@make urls
+	@echo ""
+	@echo "💡 Run 'make logs' to see logs"
+	@echo "💡 Run 'make test' to verify services"
 
-setup: install ## Setup completo del proyecto
-	@echo "$(GREEN)🔧 Configurando proyecto...$(NC)"
-	@bash setup.sh
+start:
+	@echo "════════════════════════════════════════════════════════════"
+	@echo "  🌟 Complete MLOps Pipeline Startup"
+	@echo "════════════════════════════════════════════════════════════"
+	@echo ""
+	@echo "This will execute the complete pipeline in order:"
+	@echo "  1. 🏗️  Build Docker images"
+	@echo "  2. 🔄 DVC Pipeline: init → data ingestion → preparation → training"
+	@echo "  3. 📊 MLflow UI: Start on port 5000 (after DVC completes)"
+	@echo "  4. 🚀 FastAPI: Start on port 8000 (after MLflow)"
+	@echo "  5. 🌐 Frontend: npm install → dev server on port 8080 (after API)"
+	@echo "  6. 🔄 Sync folders: data, mlruns, models → frontend/public/"
+	@echo ""
+	@echo "════════════════════════════════════════════════════════════"
+	@echo ""
+	@make build
+	@echo ""
+	@echo "🚀 Starting services in cascade order..."
+	@$(DOCKER_COMPOSE) up -d
+	@echo ""
+	@echo "⏳ Pipeline Status:"
+	@echo "   ⏳ DVC Pipeline running (this may take 5-10 minutes)..."
+	@echo "   ⏳ MLflow will start after DVC completes"
+	@echo "   ⏳ API will start after MLflow is healthy"
+	@echo "   ⏳ Frontend will start after API is healthy"
+	@echo ""
+	@echo "📋 Monitor progress:"
+	@echo "  make logs-dvc       - See DVC pipeline execution"
+	@echo "  make logs-mlflow    - See MLflow UI logs"
+	@echo "  make logs-api       - See FastAPI logs"
+	@echo "  make logs-frontend  - See Frontend logs"
+	@echo "  make logs           - See all logs"
+	@echo "  make ps             - Check services status"
+	@echo ""
+	@echo "🧪 To verify all services are healthy:"
+	@echo "  make test"
+	@echo ""
+	@echo "════════════════════════════════════════════════════════════"
 
-clean: ## Limpia archivos temporales y cache
-	@echo "$(GREEN)🧹 Limpiando archivos temporales...$(NC)"
-	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
-	find . -type f -name "*.pyc" -delete
-	find . -type f -name "*.pyo" -delete
-	find . -type f -name "*.coverage" -delete
-	rm -rf htmlcov/ .coverage coverage.xml
-	@echo "$(GREEN)✅ Limpieza completada$(NC)"
+down:
+	@echo "🛑 Stopping all services..."
+	$(DOCKER_COMPOSE) down
+	@echo "✅ Services stopped"
 
-test: ## Ejecuta tests
-	@echo "$(GREEN)🧪 Ejecutando tests...$(NC)"
-	. $(VENV)/bin/activate && pytest tests/ -v --cov=src --cov=api --cov-report=term --cov-report=html
+restart:
+	@echo "🔄 Restarting all services..."
+	$(DOCKER_COMPOSE) restart
+	@echo "✅ Services restarted"
 
-lint: ## Ejecuta linters (flake8, black)
-	@echo "$(GREEN)🔍 Ejecutando linters...$(NC)"
-	. $(VENV)/bin/activate && flake8 src/ api/ tests/ --max-line-length=100 --ignore=E203,W503 || true
-	. $(VENV)/bin/activate && black --check src/ api/ tests/ || true
+# ───────────────────────────────────────────────────────────────────
+# Logs
+# ───────────────────────────────────────────────────────────────────
+logs:
+	@echo "📋 Showing all service logs (Ctrl+C to exit)..."
+	$(DOCKER_COMPOSE) logs -f
 
-format: ## Formatea código con black
-	@echo "$(GREEN)✨ Formateando código...$(NC)"
-	. $(VENV)/bin/activate && black src/ api/ tests/
-	@echo "$(GREEN)✅ Código formateado$(NC)"
+logs-dvc:
+	@echo "📋 DVC Pipeline logs (Ctrl+C to exit)..."
+	$(DOCKER_COMPOSE) logs -f dvc-pipeline
 
-train: ## Ejecuta pipeline de entrenamiento (DVC)
-	@echo "$(GREEN)🚀 Ejecutando pipeline de entrenamiento...$(NC)"
-	. $(VENV)/bin/activate && dvc repro
-	@echo "$(GREEN)✅ Entrenamiento completado$(NC)"
+logs-mlflow:
+	@echo "📋 MLflow UI logs (Ctrl+C to exit)..."
+	$(DOCKER_COMPOSE) logs -f mlflow
 
-train-force: ## Ejecuta pipeline forzando todos los stages
-	@echo "$(GREEN)🚀 Ejecutando pipeline (forzando todos los stages)...$(NC)"
-	. $(VENV)/bin/activate && dvc repro --force
-	@echo "$(GREEN)✅ Entrenamiento completado$(NC)"
+logs-api:
+	@echo "📋 FastAPI logs (Ctrl+C to exit)..."
+	$(DOCKER_COMPOSE) logs -f api
 
-api: ## Inicia la API localmente
-	@echo "$(GREEN)🚀 Iniciando API en http://localhost:$(API_PORT)$(NC)"
-	. $(VENV)/bin/activate && uvicorn api.main:app --host 0.0.0.0 --port $(API_PORT) --reload
+logs-frontend:
+	@echo "📋 Frontend logs (Ctrl+C to exit)..."
+	$(DOCKER_COMPOSE) logs -f frontend
 
-api-prod: ## Inicia la API en modo producción
-	@echo "$(GREEN)🚀 Iniciando API (producción) en http://localhost:$(API_PORT)$(NC)"
-	. $(VENV)/bin/activate && uvicorn api.main:app --host 0.0.0.0 --port $(API_PORT) --workers 4
+# ───────────────────────────────────────────────────────────────────
+# Operations
+# ───────────────────────────────────────────────────────────────────
+shell:
+	@echo "🐚 Opening bash in API container..."
+	docker exec -it mlops-housing-api /bin/bash
 
-mlflow: ## Inicia MLflow UI
-	@echo "$(GREEN)📊 Iniciando MLflow UI en http://localhost:$(MLFLOW_PORT)$(NC)"
-	. $(VENV)/bin/activate && mlflow ui --host 0.0.0.0 --port $(MLFLOW_PORT)
+shell-dvc:
+	@echo "🐚 Opening bash in DVC pipeline container..."
+	docker exec -it mlops-housing-dvc-pipeline /bin/bash
 
-docker-build: ## Build imagen Docker
-	@echo "$(GREEN)🐳 Building Docker image...$(NC)"
-	docker build -t housing-price-api:latest .
-	@echo "$(GREEN)✅ Docker image built$(NC)"
+dvc-repro:
+	@echo "🔄 Re-running DVC pipeline..."
+	@echo "⚠️  Note: The pipeline runs automatically on startup"
+	@echo "⚠️  This command requires dvc-pipeline container to be running"
+	docker exec -it mlops-housing-dvc-pipeline dvc repro
+	@echo "✅ DVC pipeline completed"
 
-docker-up: ## Inicia servicios con Docker Compose
-	@echo "$(GREEN)🐳 Iniciando servicios Docker...$(NC)"
-	docker-compose up -d
-	@echo "$(GREEN)✅ Servicios iniciados$(NC)"
-	@echo "$(YELLOW)API: http://localhost:8000$(NC)"
-	@echo "$(YELLOW)MLflow: http://localhost:5000$(NC)"
+test:
+	@echo "🧪 Testing services..."
+	@echo ""
+	@sleep 2
+	@echo "Testing FastAPI..."
+	@curl -s http://localhost:8000/health > /dev/null 2>&1 && echo "  ✅ FastAPI is running" || echo "  ❌ FastAPI is not responding"
+	@echo ""
+	@echo "Testing MLflow..."
+	@curl -s http://localhost:5000 > /dev/null 2>&1 && echo "  ✅ MLflow is running" || echo "  ❌ MLflow is not responding"
+	@echo ""
+	@echo "Testing Frontend..."
+	@curl -s http://localhost:8080 > /dev/null 2>&1 && echo "  ✅ Frontend is running" || echo "  ❌ Frontend is not responding"
+	@echo ""
 
-docker-down: ## Detiene servicios Docker
-	@echo "$(GREEN)🛑 Deteniendo servicios Docker...$(NC)"
-	docker-compose down
-	@echo "$(GREEN)✅ Servicios detenidos$(NC)"
+ps:
+	@echo "📊 Container status:"
+	@$(DOCKER_COMPOSE) ps
 
-docker-logs: ## Muestra logs de Docker Compose
-	docker-compose logs -f
+clean:
+	@echo "🧹 Cleaning up (containers, networks, volumes)..."
+	$(DOCKER_COMPOSE) down -v
+	@echo "✅ Cleanup complete"
 
-docker-restart: docker-down docker-up ## Reinicia servicios Docker
+# ───────────────────────────────────────────────────────────────────
+# Info
+# ───────────────────────────────────────────────────────────────────
+urls:
+	@echo "════════════════════════════════════════════════════════════"
+	@echo "  📡 Service URLs"
+	@echo "════════════════════════════════════════════════════════════"
+	@echo ""
+	@echo "  FastAPI Swagger:  http://localhost:8000/docs"
+	@echo "  FastAPI Health:   http://localhost:8000/health"
+	@echo "  MLflow UI:        http://localhost:5000"
+	@echo "  Frontend:         http://localhost:8080"
+	@echo ""
+	@echo "════════════════════════════════════════════════════════════"
 
-validate-api: ## Valida que la API esté funcionando
-	@echo "$(GREEN)🔍 Validando API...$(NC)"
-	@curl -s http://localhost:$(API_PORT)/health | jq . || echo "$(YELLOW)⚠️ API no disponible$(NC)"
-
-smoke-test: ## Ejecuta smoke tests en la API
-	@echo "$(GREEN)🧪 Ejecutando smoke tests...$(NC)"
-	@echo "1. Health check..."
-	@curl -f http://localhost:$(API_PORT)/health || exit 1
-	@echo "\n2. Model info..."
-	@curl -f http://localhost:$(API_PORT)/model/info || exit 1
-	@echo "\n3. Prediction..."
-	@curl -X POST http://localhost:$(API_PORT)/predict \
-		-H "Content-Type: application/json" \
-		-d '{"CRIM":0.00632,"NOX":0.538,"RM":6.575,"AGE":65.2,"DIS":4.09,"RAD":1.0,"TAX":296.0,"PTRATIO":15.3,"B":396.9,"LSTAT":4.98}' || exit 1
-	@echo "\n$(GREEN)✅ Smoke tests passed$(NC)"
-
-dvc-status: ## Muestra estado de DVC
-	@echo "$(GREEN)📊 Estado de DVC:$(NC)"
-	. $(VENV)/bin/activate && dvc status
-
-dvc-dag: ## Muestra DAG de DVC
-	@echo "$(GREEN)📊 DAG de DVC:$(NC)"
-	. $(VENV)/bin/activate && dvc dag
-
-git-push: clean ## Limpia y hace push a Git
-	@echo "$(GREEN)🚀 Preparando push a Git...$(NC)"
-	git add .
-	git status
-	@echo "$(YELLOW)⚠️ Revisa los cambios antes de commitear$(NC)"
-
-stats: ## Muestra estadísticas del proyecto
-	@echo "$(GREEN)📊 Estadísticas del Proyecto$(NC)"
-	@echo "================================"
-	@echo "Líneas de código Python:"
-	@find src/ api/ -name "*.py" -type f | xargs wc -l | tail -1
-	@echo "\nArchivos Python:"
-	@find src/ api/ -name "*.py" -type f | wc -l
-	@echo "\nTests:"
-	@find tests/ -name "test_*.py" -type f | wc -l 2>/dev/null || echo "0"
-	@echo "\nModelos entrenados:"
-	@ls -1 mlruns/*/*/artifacts/model 2>/dev/null | wc -l || echo "0"
-
-tree: ## Muestra estructura del proyecto
-	@echo "$(GREEN)📁 Estructura del Proyecto$(NC)"
-	@tree -L 3 -I '__pycache__|*.pyc|venv|.git|mlruns' || ls -R
-
-# Atajos rápidos
-all: clean install train api ## Setup completo + entrenamiento + API
-dev: install api ## Setup + API en modo desarrollo
-prod: train api-prod ## Entrenamiento + API en producción
+# ───────────────────────────────────────────────────────────────────
+# Shortcuts
+# ───────────────────────────────────────────────────────────────────
+run: up
+stop: down
+rebuild: clean build up

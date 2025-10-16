@@ -72,26 +72,128 @@ Este proyecto implementa una solución end-to-end de Machine Learning Operations
 
 ### Prerequisitos
 
-- Python 3.10+
-- Docker & Docker Compose (opcional pero recomendado)
+- **Docker** (recomendado para deployment completo)
+- Python 3.10+ (para desarrollo local)
 - Git
-- Make (opcional, para usar Makefile)
+- Make (incluido en Linux/Mac, instalar en Windows con `choco install make`)
 
-### Opción 1: Setup Automático (Recomendado)
+---
+
+## 🐳 Opción 1: Docker - Deployment Completo (RECOMENDADO)
+
+### ⚡ Quick Start con Makefile
+
+El proyecto incluye un **Makefile** completo para gestionar todo el ciclo de vida de Docker:
 
 ```bash
-# Clonar repositorio
+# 1. Clonar repositorio
 git clone https://github.com/marestrepohi/meli-mlops-mateo-restrepo.git
 cd meli-mlops-mateo-restrepo
 
-# Ejecutar setup automático
-bash setup.sh
+# 2. Ver todos los comandos disponibles
+make help
 
-# O usando Make
-make setup
+# 3. Construir imagen Docker (incluye Python env, DVC, API, MLflow, Frontend)
+make build
+
+# 4. Ejecutar todos los servicios
+make run
+
+# 5. Verificar que todo está corriendo
+make test
+
+# 6. Ver URLs de los servicios
+make urls
 ```
 
-### Opción 2: Setup Manual
+### 📦 Servicios Docker Disponibles
+
+Una vez ejecutado `make run`, tendrás acceso a:
+
+| Servicio | Puerto | URL | Descripción |
+|----------|--------|-----|-------------|
+| **FastAPI** | 8000 | http://localhost:8000 | API REST con predicciones |
+| **MLflow UI** | 5000 | http://localhost:5000 | Tracking de experimentos |
+| **Frontend** | 8080 | http://localhost:8080 | Dashboard web completo |
+| **Swagger Docs** | 8000 | http://localhost:8000/docs | Documentación interactiva API |
+
+### 🛠️ Comandos Makefile Disponibles
+
+```bash
+# Gestión Principal
+make help           # Mostrar todos los comandos disponibles
+make build          # Construir todas las imágenes Docker
+make up             # Iniciar todos los servicios (docker-compose up)
+make down           # Detener todos los servicios (docker-compose down)
+make restart        # Reiniciar todos los servicios
+make clean          # Eliminar contenedores, redes y volúmenes
+
+# Monitoreo y Logs
+make logs           # Ver logs de todos los servicios en tiempo real
+make logs-api       # Ver solo logs del backend (API + DVC)
+make logs-mlflow    # Ver solo logs de MLflow
+make logs-frontend  # Ver solo logs del frontend
+make ps             # Ver estado de todos los contenedores
+
+# Operaciones
+make shell          # Abrir bash en el contenedor backend
+make dvc-repro      # Ejecutar pipeline DVC dentro del contenedor
+make test           # Verificar salud de todos los servicios (health check)
+make urls           # Mostrar URLs de acceso a servicios
+
+# Shortcuts
+make run            # Alias de 'make up'
+make stop           # Alias de 'make down'
+make rebuild        # Alias de 'make clean build up'
+```
+
+### 🔧 Proceso de Inicialización con Docker Compose
+
+Cuando ejecutas `make up`, Docker Compose orquesta automáticamente:
+
+**1. Backend Container (puerto 8000)**
+   - Instala dependencias Python desde `requirements.txt`
+   - Ejecuta `dvc repro` para correr todo el pipeline de ML
+   - Inicia FastAPI con `uvicorn` en modo reload
+
+**2. MLflow Container (puerto 5000)**
+   - Comparte el volumen `mlruns/` con el backend
+   - Inicia MLflow UI para visualizar experimentos
+   - Disponible inmediatamente para tracking
+
+**3. Frontend Container (puerto 8080)**
+   - Instala dependencias Node.js con `npm install`
+   - Inicia Vite dev server con hot-reload
+   - Depende de que backend esté saludable antes de iniciar
+
+Todos los servicios tienen **health checks** automáticos y se reinician si fallan.
+
+### 🎯 Uso Típico con Docker
+
+```bash
+# Desarrollo rápido
+make build && make run && make logs
+
+# Verificar servicios
+make test
+make urls
+
+# Ejecutar pipeline manualmente
+make dvc-repro
+
+# Debug
+make shell
+make api-logs
+
+# Limpieza completa
+make clean
+```
+
+---
+
+## 💻 Opción 2: Setup Local (Desarrollo)
+
+### Setup Manual Paso a Paso
 
 ```bash
 # 1. Crear entorno virtual
@@ -100,28 +202,112 @@ source venv/bin/activate  # Linux/Mac
 # o
 venv\Scripts\activate     # Windows
 
-# 2. Instalar dependencias
+# 2. Instalar dependencias Python
 pip install -r requirements.txt
 
-# 3. Ejecutar pipeline de entrenamiento
+# 3. Ejecutar pipeline de entrenamiento (DVC)
 dvc repro
 
-# 4. Iniciar API
+# 4. Iniciar API en terminal 1
 uvicorn api.main:app --reload --port 8000
 
-# 5. (Opcional) Ver experimentos en MLflow UI
+# 5. Iniciar MLflow UI en terminal 2
 mlflow ui --port 5000
+
+# 6. Iniciar Frontend en terminal 3
+cd front
+npm install
+npm run dev
 ```
 
-### Opción 3: Docker (Producción)
+### Verificación Local
 
 ```bash
-# Iniciar todo el stack (API + MLflow UI)
-docker-compose up -d
-
-# Verificar que está corriendo
+# API Health Check
 curl http://localhost:8000/health
+
+# Swagger Docs
+open http://localhost:8000/docs
+
+# MLflow UI
+open http://localhost:5000
+
+# Frontend
+open http://localhost:8082  # Vite dev server
 ```
+
+---
+
+## 🏗️ Arquitectura Docker
+
+### Docker Compose - Arquitectura Multi-Contenedor
+
+El proyecto utiliza **Docker Compose** con una arquitectura de 3 servicios independientes:
+
+```yaml
+┌─────────────────────────────────────────────────────────────┐
+│                   Docker Compose Network                     │
+│                  (mlops-housing-network)                     │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │   Backend    │  │   MLflow     │  │   Frontend   │     │
+│  │   Container  │  │   Container  │  │   Container  │     │
+│  ├──────────────┤  ├──────────────┤  ├──────────────┤     │
+│  │ Python 3.11  │  │ Python 3.11  │  │ Node 20      │     │
+│  │ DVC + FastAPI│  │ MLflow UI    │  │ Vite Dev     │     │
+│  │ Port: 8000   │  │ Port: 5000   │  │ Port: 8080   │     │
+│  └──────────────┘  └──────────────┘  └──────────────┘     │
+│         │                 │                  │              │
+│         ▼                 ▼                  ▼              │
+│   ./data/           ./mlruns/          ./front/            │
+│   ./models/                                                 │
+│   ./mlruns/                                                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Servicios Docker
+
+| Servicio | Imagen | Puerto | Función | Comando Inicial |
+|----------|--------|--------|---------|-----------------|
+| **backend** | Python 3.11-slim | 8000 | DVC + FastAPI | `dvc repro → uvicorn` |
+| **mlflow** | Python 3.11-slim | 5000 | MLflow UI | `mlflow ui` |
+| **frontend** | Node 20-alpine | 8080 | Vite Dev Server | `npm install → npm run dev` |
+
+### Volúmenes Persistentes
+
+Los siguientes directorios se montan como volúmenes para persistir datos:
+
+```bash
+# Backend
+-v ./data:/app/data         # Datos del pipeline
+-v ./models:/app/models     # Modelos entrenados
+-v ./mlruns:/app/mlruns     # Experimentos MLflow
+
+# MLflow
+-v ./mlruns:/app/mlruns     # Experimentos compartidos
+
+# Frontend
+-v ./front:/app             # Código fuente con hot reload
+```
+
+### Archivos de Configuración
+
+```
+docker-compose.yml       # Orquestación de servicios
+Dockerfile               # Imagen Python backend
+.dockerignore           # Exclusiones de build
+Makefile                # Comandos de gestión simplificados
+```
+
+### Características
+
+✅ **Aislamiento**: Cada servicio en su propio contenedor  
+✅ **Independencia**: Los servicios pueden reiniciarse sin afectar a otros  
+✅ **Hot Reload**: Frontend y API con recarga automática en desarrollo  
+✅ **Persistencia**: Datos compartidos mediante volúmenes  
+✅ **Health Checks**: Monitoreo automático de estado de servicios  
+✅ **Network Aislado**: Red privada para comunicación entre servicios  
 
 ---
 
@@ -140,6 +326,15 @@ meli-mlops-mateo-restrepo/
 │   ├── model_train.py            # Entrenamiento (3 experimentos XGBoost)
 │   ├── model_register.py         # MLflow Model Registry (opcional)
 │   └── config.py                 # Configuración centralizada
+│
+├── docker/                       # 🐳 Configuración Docker
+│   ├── nginx.conf                # Nginx reverse proxy
+│   └── supervisord.conf          # Process manager config
+│
+├── front/                        # 🌐 Frontend React
+│   ├── src/                      # Código fuente React
+│   ├── public/                   # Assets estáticos
+│   └── package.json              # Dependencias Node.js
 │
 ├── tests/                        # Tests comprehensivos
 │   ├── test_api.py               # Tests de API (endpoints, security)
@@ -686,12 +881,132 @@ MIT License - ver [LICENSE](LICENSE) para detalles
 
 ---
 
+## 🎯 Ejemplos de Uso Completo
+
+### Ejemplo 1: Quick Start con Docker
+
+```bash
+# Clonar y construir
+git clone https://github.com/marestrepohi/meli-mlops-mateo-restrepo.git
+cd meli-mlops-mateo-restrepo
+make build
+
+# Ejecutar todos los servicios
+make run
+
+# Verificar que todo está funcionando
+make test
+
+# Ver logs en tiempo real
+make logs
+```
+
+### Ejemplo 2: Hacer una Predicción
+
+```bash
+# Usando curl
+curl -X POST "http://localhost:8000/predict" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "CRIM": 0.00632,
+    "NOX": 0.538,
+    "RM": 6.575,
+    "AGE": 65.2,
+    "DIS": 4.09,
+    "RAD": 1.0,
+    "TAX": 296.0,
+    "PTRATIO": 15.3,
+    "B": 396.90,
+    "LSTAT": 4.98
+  }'
+
+# Respuesta esperada:
+# {
+#   "prediction": 24.5,
+#   "model_name": "02_important_features",
+#   "model_version": "1.0.0",
+#   "model_stage": "Production",
+#   "inference_time": 12.3,
+#   "features_used": ["CRIM", "NOX", "RM", ...]
+# }
+```
+
+### Ejemplo 3: Entrenar Nuevo Modelo
+
+```bash
+# Ejecutar pipeline DVC dentro del contenedor
+make dvc-repro
+
+# O manual dentro del shell
+make shell
+> dvc repro
+> exit
+
+# Ver nuevos experimentos en MLflow
+open http://localhost:5000
+```
+
+### Ejemplo 4: Monitorear Drift
+
+```bash
+# Ver estadísticas de predicciones
+curl http://localhost:8000/monitoring/stats
+
+# Detectar data drift
+curl http://localhost:8000/monitoring/drift
+
+# Ver dashboard de monitoreo
+open http://localhost:8000/monitoring/dashboard
+```
+
+### Ejemplo 5: Desarrollo Local
+
+```bash
+# Setup Python environment
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Ejecutar pipeline
+dvc repro
+
+# Terminal 1: API
+uvicorn api.main:app --reload --port 8000
+
+# Terminal 2: MLflow UI
+mlflow ui --port 5000
+
+# Terminal 3: Frontend
+cd front && npm install && npm run dev
+```
+
+---
+
+## 📊 Resumen de Comandos Make
+
+| Comando | Descripción | Uso |
+|---------|-------------|-----|
+| `make help` | Muestra ayuda completa | Siempre empieza aquí |
+| `make build` | Construye imagen Docker | Primera vez o después de cambios |
+| `make run` | Inicia todos los servicios | Deployment completo |
+| `make stop` | Detiene el contenedor | Cuando termines |
+| `make restart` | Reinicia servicios | Después de cambios de config |
+| `make logs` | Ver logs en vivo | Debugging |
+| `make shell` | Abrir bash en contenedor | Ejecutar comandos dentro |
+| `make test` | Verificar servicios | Health check rápido |
+| `make dvc-repro` | Ejecutar pipeline ML | Reentrenar modelo |
+| `make clean` | Limpieza completa | Empezar de cero |
+| `make urls` | Mostrar URLs servicios | Ver puertos y endpoints |
+
+---
+
 ## 🙏 Agradecimientos
 
 - Dataset: Boston Housing (UCI Machine Learning Repository)
 - MLflow Team por el excelente framework de tracking
 - FastAPI team por la mejor experiencia de developer
 - Comunidad open-source de Python ML
+- Docker & Supervisor por simplificar el deployment
 
 ---
 
