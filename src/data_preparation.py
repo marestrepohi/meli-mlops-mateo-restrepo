@@ -96,19 +96,33 @@ class DataPreprocessor:
         logger.info("🧹 Cleaning dataset...")
         preprocessing_params = self.params.get('preprocessing', {})
         remove_duplicates = preprocessing_params.get('remove_duplicates', True)
+        
+        # Variables categóricas (representadas con números)
+        variable_categoricas = ['CHAS', 'RAD']
 
         nulos = df.isnull().sum()
         if nulos.any():
             logger.warning(f"⚠️ Missing values detected:\n{nulos[nulos > 0]}")
-            columnas_numericas = df.select_dtypes(include=np.number).columns
             valores_reemplazados = {}
-            for col in columnas_numericas:
+            
+            for col in df.columns:
                 if df[col].isnull().any():
-                    media = df[col].mean()
                     num_nulos = df[col].isnull().sum()
-                    df[col] = df[col].fillna(media)
-                    valores_reemplazados[col] = {'nulos': num_nulos, 'media': round(media, 4)}
-                    logger.info(f"   📊 {col}: {num_nulos} nulls filled with mean = {media:.4f}")
+                    
+                    # Estrategia 1: Imputar con la MODA para variables categóricas
+                    if col in variable_categoricas:
+                        mode_val = df[col].mode()[0]
+                        df[col] = df[col].fillna(mode_val)
+                        valores_reemplazados[col] = {'nulos': num_nulos, 'moda': mode_val}
+                        logger.info(f"   📊 {col}: {num_nulos} nulls filled with mode = {mode_val}")
+                    
+                    # Estrategia 2: Imputar con la MEDIA para el resto (numéricas)
+                    else:
+                        media = df[col].mean()
+                        df[col] = df[col].fillna(media)
+                        valores_reemplazados[col] = {'nulos': num_nulos, 'media': round(media, 4)}
+                        logger.info(f"   📊 {col}: {num_nulos} nulls filled with mean = {media:.4f}")
+            
             logger.info(f"✅ Total replaced values: {sum(v['nulos'] for v in valores_reemplazados.values())}")
         else:
             logger.info("✅ No missing values detected")

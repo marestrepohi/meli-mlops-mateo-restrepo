@@ -136,10 +136,12 @@ make logs-frontend  # Ver solo logs del frontend
 make ps             # Ver estado de todos los contenedores
 
 # Operaciones
-make shell          # Abrir bash en el contenedor backend
-make dvc-repro      # Ejecutar pipeline DVC dentro del contenedor
-make test           # Verificar salud de todos los servicios (health check)
-make urls           # Mostrar URLs de acceso a servicios
+make shell                    # Abrir bash en el contenedor backend
+make dvc-repro                # Ejecutar pipeline DVC dentro del contenedor
+make register-model           # Registrar mejor modelo en Production (MLflow)
+make register-model-staging   # Registrar mejor modelo en Staging (MLflow)
+make test                     # Verificar salud de todos los servicios (health check)
+make urls                     # Mostrar URLs de acceso a servicios
 
 # Shortcuts
 make run            # Alias de 'make up'
@@ -415,20 +417,50 @@ El pipeline está implementado con **DVC** para reproducibilidad completa:
 - Predictions vs Actuals
 - Model signature (MLflow)
 
-**Output:** Mejor modelo exportado a `models/production/latest/`
+**Outputs:** 
+- Mejor modelo exportado a `models/production/latest/`
+- `models/model_info.json` con run_id del mejor modelo
+
+### Etapa 4: Model Registration (`src/model_register.py`)
+
+**Registro en MLflow Model Registry:**
+
+- Lee `model_info.json` (generado por model_train.py)
+- Registra el mejor modelo en MLflow Model Registry
+- Transiciona automáticamente al stage especificado (Production/Staging)
+- Archiva versiones antiguas del mismo stage
+- Agrega tags y metadata al modelo registrado
+
+**Stages disponibles:**
+- `Production`: Modelo listo para producción
+- `Staging`: Modelo en fase de pruebas
+- `Archived`: Versiones antiguas archivadas
+
+**Output:** Modelo versionado y registrado en MLflow Model Registry
 
 ### Ejecución del Pipeline
 
 ```bash
-# Ejecutar pipeline completo
+# Ejecutar pipeline completo (incluye registro en Model Registry)
 dvc repro
 
 # Ejecutar stages específicos
 dvc repro data_preparation
 dvc repro model_train
+dvc repro model_register
+
+# Registrar modelo manualmente (alternativa)
+python src/model_register.py --stage Production
+
+# Registrar en Staging
+python src/model_register.py --stage Staging
 
 # Ver DAG del pipeline
 dvc dag
+
+# Usando Makefile
+make register-model           # Registra en Production
+make register-model-staging   # Registra en Staging
 ```
 
 ---

@@ -34,11 +34,13 @@ help:
 	@echo "  make ps             - Show container status"
 	@echo ""
 	@echo "🔧 Operations:"
-	@echo "  make shell          - Open bash in backend container"
-	@echo "  make test           - Test all services health"
-	@echo "  make dvc-repro      - Run DVC pipeline"
-	@echo "  make clean          - Remove all containers and volumes"
-	@echo "  make urls           - Show service URLs"
+	@echo "  make shell                - Open bash in backend container"
+	@echo "  make test                 - Test all services health"
+	@echo "  make dvc-repro            - Run DVC pipeline"
+	@echo "  make register-model       - Register best model to Production"
+	@echo "  make register-model-staging - Register best model to Staging"
+	@echo "  make clean                - Remove all containers and volumes"
+	@echo "  make urls                 - Show service URLs"
 	@echo ""
 	@echo "📡 Services (after 'make up'):"
 	@echo "  - FastAPI:    http://localhost:8000"
@@ -154,6 +156,16 @@ dvc-repro:
 	@echo "⚠️  This command requires dvc-pipeline container to be running"
 	docker exec -it mlops-housing-dvc-pipeline dvc repro
 	@echo "✅ DVC pipeline completed"
+
+register-model:
+	@echo "📦 Registering model in MLflow Model Registry..."
+	python src/model_register.py --stage Production
+	@echo "✅ Model registered successfully"
+
+register-model-staging:
+	@echo "📦 Registering model in MLflow Model Registry (Staging)..."
+	python src/model_register.py --stage Staging
+	@echo "✅ Model registered in Staging"
 
 test:
 	@echo "🧪 Testing services..."

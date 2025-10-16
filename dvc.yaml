@@ -71,14 +71,14 @@ stages:
       - models/production/latest/metadata.json
 
   # ===================================================================
-  # Stage 4: Model Registration (OPCIONAL)
+  # Stage 4: Model Registration
   # Registro del mejor modelo en MLflow Model Registry.
-  # NOTA: Este stage es opcional. El modelo ya está listo en 
-  #       models/production/latest/ después del entrenamiento.
-  #       Solo ejecuta esto si necesitas versionado en Model Registry.
+  # Lee model_info.json (generado por model_train) y registra el modelo
+  # en MLflow Model Registry con el stage especificado (Production, Staging).
+  # Archiva automáticamente versiones antiguas del mismo stage.
   # ===================================================================
-  # model_register:
-  #   cmd: python src/model_register.py --stage Staging
-  #   deps:
-  #     - src/model_register.py
-  #     - models/model_info.json
+  model_register:
+    cmd: python src/model_register.py --stage Production
+    deps:
+      - src/model_register.py
+      - models/model_info.json
