@@ -67,9 +67,7 @@ models/
 mlruns/
 .dvc/cache/
 .dvc/tmp/
-
-# Frontend (separate Node.js container)
-front/
+.dvc/
 
 # Frontend synced folders (mounted as volumes, not copied)
 front/public/data/
