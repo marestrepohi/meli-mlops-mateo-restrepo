@@ -8,6 +8,25 @@
 [![Colaboración](https://img.shields.io/badge/Creado%20con-GitHub%20Copilot-ffd700.svg)](https://github.com/features/copilot)
 [![Licencia](https://img.shields.io/badge/licencia-MIT-blue.svg)](LICENSE)
 
+---
+
+## � Capturas del Sistema
+
+<div align="center">
+
+### 🎯 Dashboard MLOps Completo
+<img src="meli_mlops.png" alt="Dashboard MLOps" width="800"/>
+
+### 🔵 API REST con FastAPI
+<img src="meli_api.png" alt="API FastAPI" width="800"/>
+
+### 📊 MLflow Tracking UI
+<img src="meli_mlflow.png" alt="MLflow UI" width="800"/>
+
+</div>
+
+---
+
 > 🤖 **Sistema completo y producción-ready de MLOps** para predicción de precios de viviendas. 
 > Solución agnóstica a la nube con tecnologías open-source, pipeline reproducible, API REST, monitoreo continuo y CI/CD automatizado. 
 > **Este proyecto fue co-creado con GitHub Copilot** integrando técnicas modernas de IA en todo el ciclo de desarrollo.
@@ -36,9 +55,8 @@ Este proyecto implementa una **solución end-to-end de Machine Learning Operatio
 6. ✅ **Automatización**: CI/CD completo con GitHub Actions
 7. ✅ **Interferencia Óptima**: API REST con validación y seguridad
 
----
 
-## 🚀 Inicio Rápido - 2 Opciones
+## �🚀 Inicio Rápido - 2 Opciones
 
 ### Opción 1️⃣: Con Docker - Makefile (RECOMENDADO - Más Fácil)
 
