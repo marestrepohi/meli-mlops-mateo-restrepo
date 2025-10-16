@@ -89,10 +89,6 @@ def configurar_credenciales() -> bool:
     username = os.getenv('KAGGLE_USERNAME', "marestrepohi")
     api_key = os.getenv('KAGGLE_KEY', "037c85291a66a2b8159a83970e814353")
 
-    if not username or not api_key:
-        logger.warning("⚠️ Credenciales no encontradas en las variables de entorno.")
-        logger.warning("   Asegúrate de tener un archivo .env con KAGGLE_USERNAME y KAGGLE_KEY.")
-        return False
 
     # Asignar credenciales a variables de entorno que la librería kaggle espera
     os.environ['KAGGLE_USERNAME'] = username

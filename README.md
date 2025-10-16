@@ -38,6 +38,54 @@ Este proyecto implementa una **solución end-to-end de Machine Learning Operatio
 
 ---
 
+## ⚙️ Configuración Inicial (Archivo `.env`)
+
+Antes de ejecutar el proyecto, es **necesario configurar las credenciales de Kaggle** para la descarga automática de datos.
+
+### Opción A: Crear archivo `.env` manualmente
+
+Crea un archivo `.env` en la raíz del proyecto con el siguiente contenido:
+
+```bash
+# Credenciales de Kaggle (REQUERIDAS para data ingestion)
+KAGGLE_USERNAME=tu_usuario_kaggle
+KAGGLE_KEY=tu_api_key_kaggle
+
+# Configuración MLflow
+MLFLOW_TRACKING_URI=./mlruns
+MLFLOW_EXPERIMENT_NAME=housing-price-prediction
+
+# Configuración API
+API_HOST=0.0.0.0
+API_PORT=8000
+ENABLE_MONITORING=true
+LOG_LEVEL=INFO
+```
+
+### Opción B: Usar el template incluido
+
+```bash
+cp .env.example .env
+# Luego edita .env con tus credenciales
+```
+
+### 🔑 ¿Cómo obtener credenciales de Kaggle?
+
+1. Inicia sesión en [kaggle.com](https://www.kaggle.com)
+2. Ve a tu perfil → **Account** → **API** → **Create New API Token**
+3. Se descargará un archivo `kaggle.json` con tus credenciales:
+   ```json
+   {
+     "username": "tu_usuario",
+     "key": "abc123def456..."
+   }
+   ```
+4. Copia `username` y `key` a tu archivo `.env`
+
+> **Nota**: Si usas Docker con `make start`, el archivo `.env` se crea automáticamente con valores por defecto. Solo necesitas configurarlo manualmente si ejecutas el pipeline localmente.
+
+---
+
 ## 🚀 Inicio Rápido - 2 Opciones
 
 ### Opción 1️⃣: Con Docker - Makefile (RECOMENDADO - Más Fácil)
@@ -119,7 +167,7 @@ cd front && npm install && npm run dev
 **URLs disponibles:**
 - 🔵 API: http://localhost:8000
 - 📊 MLflow: http://localhost:5000
-- 🔴 Frontend: http://localhost:8082
+- 🌐 Frontend: http://localhost:8080
 
 ---
 
@@ -195,15 +243,27 @@ curl -X POST http://localhost:8000/predict/batch \
     ]
   }'
 ```
-```bash
-curl -X POST http://localhost:8000/predict/batch \
-  -H "Content-Type: application/json" \
-  -d '{
-    "data": [
-      {"CRIM": 0.00632, "NOX": 0.538, "RM": 6.575, "AGE": 65.2, "DIS": 4.09, "RAD": 1, "TAX": 296, "PTRATIO": 15.3, "B": 396.9, "LSTAT": 4.98},
-      {"CRIM": 0.02731, "NOX": 0.469, "RM": 6.421, "AGE": 78.9, "DIS": 4.9671, "RAD": 2, "TAX": 242, "PTRATIO": 17.8, "B": 396.9, "LSTAT": 9.14}
-    ]
-  }'
+
+**Respuesta esperada:**
+```json
+{
+  "predictions": [
+    {
+      "index": 0,
+      "prediction": 24.5,
+      "inference_time_ms": 8.23
+    },
+    {
+      "index": 1,
+      "prediction": 21.8,
+      "inference_time_ms": 7.45
+    }
+  ],
+  "count": 2,
+  "model_version": "v1.0",
+  "total_inference_time": 15.68,
+  "avg_inference_time": 7.84
+}
 ```
 
 ---
@@ -216,7 +276,7 @@ curl -X POST http://localhost:8000/predict/batch \
 | **API (FastAPI)** | 8000 | http://localhost:8000 | REST API con predicciones en tiempo real |
 | **Swagger Docs** | 8000 | http://localhost:8000/docs | Documentación interactiva |
 | **MLflow UI** | 5000 | http://localhost:5000 | Tracking de experimentos y modelos |
-| **Frontend** | 8080/8082 | http://localhost:8080 | Dashboard web interactivo |
+| **Frontend** | 8080 | http://localhost:8080 | Dashboard web interactivo |
 
 ---
 
@@ -439,7 +499,7 @@ Interfaz web moderna con React + Vite:
 ✅ Estadísticas de performance
 ```
 
-**Acceso:** http://localhost:8080 (o http://localhost:8082)
+**Acceso:** http://localhost:8080
 
 ---
 
