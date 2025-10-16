@@ -96,3 +96,8 @@ dist-ssr
 front/public/data
 front/public/mlruns
 front/public/models
+
+dvc.lock
+*.dvc.lock
+*.dvcignore
+.dvcignore
