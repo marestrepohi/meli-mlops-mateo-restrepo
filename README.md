@@ -22,16 +22,7 @@
 
 ## 🎥 Video Demo del Proyecto
 
-<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%;">
-  <iframe src="https://drive.google.com/file/d/1MZXWTC2SF8O0-vJjvufFEhiZZ7-SA7KM/preview" 
-          width="800" 
-          height="450" 
-          allow="autoplay" 
-          frameborder="0" 
-          allowfullscreen
-          style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
-  </iframe>
-</div>
+[![Ver Video Demo](https://img.shields.io/badge/▶️-Ver_Video_Completo-red?style=for-the-badge&logo=youtube)](https://drive.google.com/file/d/1MZXWTC2SF8O0-vJjvufFEhiZZ7-SA7KM/view?usp=sharing)
 
 <br/>
 
