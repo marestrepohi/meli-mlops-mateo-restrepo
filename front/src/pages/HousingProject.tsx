@@ -124,7 +124,9 @@ export default function HousingProject() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <Button variant="outline" size="sm" className="gap-2">
+                <Button 
+                  className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-md"
+                >
                   <ExternalLink className="h-4 w-4" />
                   GitHub
                 </Button>

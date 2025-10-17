@@ -8,17 +8,33 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ExternalLink, RefreshCw, Info, Sparkles } from 'lucide-react';
+import { ExternalLink, RefreshCw, Info, Sparkles, AlertTriangle } from 'lucide-react';
 
-const MLFLOW_URL = 'http://localhost:5000';
+// Use proxy to avoid X-Frame-Options and CORS issues
+const MLFLOW_URL = '/mlflow';
+const MLFLOW_DIRECT_URL = 'http://localhost:5000';
 const EXPERIMENT_ID = '434179164881858349';
 
 export default function HousingMLflow() {
+  const [iframeError, setIframeError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [iframeKey, setIframeKey] = useState(0);
   const [currentView, setCurrentView] = useState<'experiments' | 'models' | 'full'>('experiments');
 
   const refreshIframe = () => {
     setIframeKey(prev => prev + 1);
+    setIframeError(false);
+    setIsLoading(true);
+  };
+
+  const handleIframeLoad = () => {
+    setIsLoading(false);
+    setIframeError(false);
+  };
+
+  const handleIframeError = () => {
+    setIframeError(true);
+    setIsLoading(false);
   };
 
   const getIframeUrl = () => {
@@ -52,13 +68,13 @@ export default function HousingMLflow() {
         <AlertDescription className="flex items-center justify-between">
           <span>
             MLflow UI integrado desde{' '}
-            <code className="text-xs font-mono">http://localhost:5000</code>
+            <code className="text-xs font-mono">http://localhost:5000</code> vía proxy
           </span>
           <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.open(getIframeUrl(), '_blank')}
+              onClick={() => window.open(MLFLOW_DIRECT_URL, '_blank')}
               className="gap-2"
             >
               <ExternalLink className="h-4 w-4" />
@@ -76,6 +92,39 @@ export default function HousingMLflow() {
           </div>
         </AlertDescription>
       </Alert>
+
+      {/* Error Alert */}
+      {iframeError && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            <div className="space-y-2">
+              <p className="font-semibold">No se puede cargar MLflow UI en el iframe</p>
+              <p className="text-sm">
+                Esto puede deberse a políticas de seguridad del navegador (X-Frame-Options o CSP).
+              </p>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(MLFLOW_DIRECT_URL, '_blank')}
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Abrir MLflow directamente
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={refreshIframe}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Reintentar
+                </Button>
+              </div>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* View Selector */}
       <Card className="mb-6">
@@ -158,18 +207,26 @@ export default function HousingMLflow() {
       <Card>
         <CardContent className="p-0">
           <div 
-            className="w-full overflow-hidden rounded-lg border"
+            className="w-full overflow-hidden rounded-lg border relative"
             style={{ height: 'calc(100vh - 400px)', minHeight: '600px' }}
           >
+            {isLoading && !iframeError && (
+              <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-10">
+                <div className="text-center space-y-2">
+                  <RefreshCw className="h-8 w-8 animate-spin mx-auto text-primary" />
+                  <p className="text-sm text-muted-foreground">Cargando MLflow UI...</p>
+                </div>
+              </div>
+            )}
             <iframe
               key={iframeKey}
               src={getIframeUrl()}
               className="w-full h-full"
               title="MLflow Tracking UI"
               style={{ border: 'none' }}
-              onError={(e) => {
-                console.error('Error loading MLflow UI:', e);
-              }}
+              onLoad={handleIframeLoad}
+              onError={handleIframeError}
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
             />
           </div>
         </CardContent>
@@ -208,11 +265,38 @@ export default function HousingMLflow() {
       <Alert className="mt-6">
         <Info className="h-4 w-4" />
         <AlertDescription>
-          <strong>Nota técnica:</strong> MLflow debe estar ejecutándose en{' '}
-          <code>http://localhost:5000</code>. Si no ves la interfaz, inicia el servidor con:{' '}
-          <code className="block mt-2 p-2 bg-muted rounded">
-            cd python && mlflow ui --host 0.0.0.0 --port 5000
-          </code>
+          <div className="space-y-2">
+            <p>
+              <strong>Nota técnica:</strong> MLflow debe estar ejecutándose en{' '}
+              <code>http://localhost:5000</code>.
+            </p>
+            <details className="text-sm">
+              <summary className="cursor-pointer font-semibold mb-2">
+                ⚠️ Si el iframe no carga (pantalla en blanco)
+              </summary>
+              <div className="space-y-2 mt-2 pl-4 border-l-2 border-muted">
+                <p>
+                  <strong>Causa:</strong> MLflow bloquea ser embebido en iframes por seguridad 
+                  (X-Frame-Options: DENY).
+                </p>
+                <p><strong>Soluciones:</strong></p>
+                <ol className="list-decimal pl-5 space-y-1">
+                  <li>
+                    Haz clic en <strong>"Abrir en Nueva Pestaña"</strong> para ver MLflow directamente
+                  </li>
+                  <li>
+                    O inicia el frontend con proxy: 
+                    <code className="block mt-1 p-2 bg-muted rounded text-xs">
+                      cd front && npm run dev -- --config vite-proxy.config.ts
+                    </code>
+                  </li>
+                  <li>
+                    O usa un navegador en modo desarrollo sin restricciones de CORS
+                  </li>
+                </ol>
+              </div>
+            </details>
+          </div>
         </AlertDescription>
       </Alert>
     </div>

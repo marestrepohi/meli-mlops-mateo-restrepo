@@ -12,6 +12,7 @@ import Artifacts from "./pages/Artifacts";
 import NotFound from "./pages/NotFound";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
+import { SidebarProvider, useSidebar } from "@/contexts/SidebarContext";
 
 // Housing Project Pages
 import HousingProject from "./pages/HousingProject";
@@ -39,24 +40,32 @@ const SimpleLayout = ({ children }: { children: React.ReactNode }) => (
 );
 
 // Layout con sidebar (para proyectos)
-const ProjectLayout = ({ children }: { children: React.ReactNode }) => (
-  <div className="min-h-screen bg-background">
-    <Navbar />
-    <div className="flex">
-      <Sidebar />
-      <main className="flex-1">
-        {children}
-      </main>
+const ProjectLayout = ({ children }: { children: React.ReactNode }) => {
+  const { isCollapsed } = useSidebar();
+  
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <div className="flex">
+        <Sidebar />
+        <main 
+          className="flex-1 transition-all duration-300 ease-in-out"
+          style={{ marginLeft: isCollapsed ? '80px' : '256px' }}
+        >
+          {children}
+        </main>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <Toaster />
-    <Sonner />
-    <BrowserRouter>
-      <Routes>
+    <SidebarProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <Routes>
         {/* Páginas sin sidebar */}
         <Route path="/" element={<SimpleLayout><Index /></SimpleLayout>} />
         <Route path="/new-project" element={<SimpleLayout><NewProject /></SimpleLayout>} />
@@ -81,6 +90,7 @@ const App = () => (
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
+    </SidebarProvider>
   </QueryClientProvider>
 );
 

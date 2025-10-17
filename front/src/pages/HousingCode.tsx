@@ -314,10 +314,14 @@ export default function HousingCode() {
                       href="https://github.com/marestrepohi/meli-mlops-mateo-restrepo"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-xs text-primary hover:underline"
                     >
-                      <ExternalLink className="h-3 w-3" />
-                      Ver repositorio completo en GitHub
+                      <Button 
+                        className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-md"
+                        size="sm"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        Ver repositorio completo en GitHub
+                      </Button>
                     </a>
                   </div>
                 </div>

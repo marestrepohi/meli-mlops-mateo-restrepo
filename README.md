@@ -16,7 +16,13 @@
 - LinkedIn: [mateo-restrepo](https://www.linkedin.com/in/mateorestrepohiguita-datascientist/)
 ---
 
+
+
 <div align="center">
+
+## 🎥 Video Demo del Proyecto
+
+[![Ver Video Demo](https://img.shields.io/badge/▶️-Ver_Video_Completo-red?style=for-the-badge&logo=youtube)](https://drive.google.com/file/d/1MZXWTC2SF8O0-vJjvufFEhiZZ7-SA7KM/view?usp=sharing)
 
 ### 🎯 Dashboard MLOps Completo
 <img src="meli_mlops.png" alt="Dashboard MLOps" width="800"/>

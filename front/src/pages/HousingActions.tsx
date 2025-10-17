@@ -227,7 +227,10 @@ export default function HousingActions() {
             target="_blank"
             rel="noopener noreferrer"
           >
-            <Button size="sm" className="gap-2">
+            <Button 
+              size="sm" 
+              className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-md"
+            >
               <ExternalLink className="h-4 w-4" />
               Ver en GitHub
             </Button>
